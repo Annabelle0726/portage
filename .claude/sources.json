@@ -1,0 +1,76 @@
+{
+  "_comment": "Personal hybrid source registry. Each entry is a capacity pool with a cost class and an access path; the institutional analogue is the deployment ladder in litellm.config.yaml. This is the EduCloud federation in miniature: four independent meters, free-before-metered, scarce tier reserved. 'access' is the honest part: cli = real terminal binary on your subscription; api = separate per-token meter; app = no CLI exists, launcher only.",
+  "sources": [
+    {
+      "name": "local",
+      "access": "cli",
+      "cmd": "ollama run {model}",
+      "model": "qwen2.5-coder:32b",
+      "cost": "free",
+      "meter": "none",
+      "best_at": [
+        "bulk/throwaway",
+        "classification",
+        "offline",
+        "clinical/private data"
+      ],
+      "priority": 1
+    },
+    {
+      "name": "codex",
+      "access": "cli",
+      "cmd": "codex",
+      "cost": "subscription",
+      "meter": "ChatGPT Plus 5h window (shared with ChatGPT Work / Excel agent)",
+      "best_at": [
+        "second parallel coding lane",
+        "self-contained tasks",
+        "when Claude's window is spent"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "claude",
+      "access": "cli",
+      "cmd": "claude",
+      "cost": "subscription",
+      "meter": "Max 5x shared wallet (5h + weekly + tighter Opus cap)",
+      "best_at": [
+        "deep repo work",
+        "large refactors",
+        "judgment",
+        "writing quality"
+      ],
+      "priority": 3,
+      "scarce": true
+    },
+    {
+      "name": "sonar",
+      "access": "api",
+      "endpoint": "https://api.perplexity.ai/chat/completions",
+      "auth_env": "PERPLEXITY_API_KEY",
+      "model": "sonar-pro",
+      "cost": "metered",
+      "meter": "$5/mo Pro credits (no rollover), then per-token + per-request",
+      "best_at": [
+        "scripted quick lookup with citations",
+        "pipeline-friendly search"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "perplexity-pro",
+      "access": "app",
+      "launch_url": "https://www.perplexity.ai/search?q={q}",
+      "cost": "subscription",
+      "meter": "Pro consumer tier (separate from Sonar API credits)",
+      "best_at": [
+        "Deep Research (Opus-powered, off your Claude wallet)",
+        "lit review",
+        "competitive scan"
+      ],
+      "priority": 1,
+      "note": "No CLI exists for the consumer tier. Highest-value underused asset \u2014 the launcher exists so it stays in the same muscle memory as the CLIs."
+    }
+  ]
+}

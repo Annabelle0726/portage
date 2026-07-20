@@ -1,0 +1,79 @@
+{
+  "_comment": "The routing target space. The classifier picks ONE target from here: provider + model + effort. Keep this current — it's the single place model names and effort levels live, so vendor drift is a one-file fix (see the maintenance spec).",
+
+  "targets": [
+    {
+      "id": "local.small",
+      "provider": "local", "model": "qwen2.5-coder:7b", "effort": null,
+      "cost": "free", "meter": "none",
+      "good_for": ["classify", "summarize", "rename", "extract", "boilerplate"],
+      "bad_for": ["multi-file reasoning", "architecture", "subtle debugging"],
+      "ceiling": "low"
+    },
+    {
+      "id": "local.big",
+      "provider": "local", "model": "qwen2.5-coder:32b", "effort": null,
+      "cost": "free", "meter": "none",
+      "good_for": ["scoped single-file edits", "tests", "private/clinical work", "offline"],
+      "bad_for": ["large refactors", "cross-file design"],
+      "ceiling": "medium"
+    },
+    {
+      "id": "codex.fast",
+      "provider": "codex", "model": "gpt-5.6-luna", "effort": "low",
+      "cost": "subscription", "meter": "plus_5h",
+      "good_for": ["high-volume mechanical edits", "quick scripts"],
+      "bad_for": ["deep reasoning"],
+      "ceiling": "medium"
+    },
+    {
+      "id": "codex.default",
+      "provider": "codex", "model": "gpt-5.6-terra", "effort": "medium",
+      "cost": "subscription", "meter": "plus_5h",
+      "good_for": ["self-contained tasks", "algorithmic problems", "overflow when Claude is spent"],
+      "bad_for": ["large unfamiliar repos"],
+      "ceiling": "high"
+    },
+    {
+      "id": "codex.deep",
+      "provider": "codex", "model": "gpt-5.6-sol", "effort": "high",
+      "cost": "subscription", "meter": "plus_5h",
+      "good_for": ["hard self-contained reasoning", "tricky algorithms"],
+      "bad_for": ["cheap volume — burns the 5h window fast"],
+      "ceiling": "high"
+    },
+    {
+      "id": "claude.default",
+      "provider": "claude", "model": "claude-sonnet-5", "effort": "default",
+      "cost": "subscription", "meter": "max_shared",
+      "good_for": ["repo-aware edits", "tests", "most day-to-day building"],
+      "bad_for": [],
+      "ceiling": "high"
+    },
+    {
+      "id": "claude.deep",
+      "provider": "claude", "model": "claude-opus-4-8", "effort": "high",
+      "cost": "subscription", "meter": "max_opus_cap",
+      "good_for": ["architecture", "large refactors", "subtle debugging", "milestone/plan judgment"],
+      "bad_for": ["routine volume — draws the tightest cap you have"],
+      "ceiling": "frontier",
+      "scarce": true
+    },
+    {
+      "id": "perplexity.research",
+      "provider": "perplexity", "model": "deep-research", "effort": null,
+      "cost": "subscription", "meter": "ppx_consumer",
+      "good_for": ["literature review", "prior art", "competitive scan", "current state of X"],
+      "bad_for": ["writing code", "editing your repo"],
+      "ceiling": "frontier",
+      "note": "Opus-powered and costs no Claude quota. App-only — dispatch opens it."
+    }
+  ],
+
+  "constraints": [
+    "Never pair elevated effort with a low-ceiling target — wasted latency, no gain.",
+    "Small/fast models reject the top effort tier; use the next one down.",
+    "Sensitive work is pinned to local.* by deterministic rule, never by the classifier.",
+    "On uncertainty, escalate to a HIGHER ceiling. Never guess downward."
+  ]
+}

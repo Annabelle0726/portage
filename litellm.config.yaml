@@ -1,0 +1,87 @@
+# LiteLLM proxy — the routing spine. Replaces the deleted custom broker
+# (scripts/sovereign_broker.py): cooldowns, ordered failover, health checks and
+# spend logging are all native here. See HANDOFF.md §2 and specs/08.
+#
+#   litellm --config litellm.config.yaml --port 4000
+#
+# The ladder is expressed as ONE model group per lane with ordered deployments.
+# `order` encodes the platform's core policy: free before metered, scarce last.
+# Escalation is open-to-open first; the frontier deployment is last by design.
+
+model_list:
+  # ---- work: the general execution group -----------------------------------
+  - model_name: work
+    litellm_params:
+      model: ollama/qwen2.5-coder:32b
+      api_base: http://localhost:11434       # or the warm iMac over Tailscale
+      order: 1                                # free, private, always first
+    model_info: {tier: local, cost_class: free}
+
+  - model_name: work
+    litellm_params:
+      model: openai/gpt-oss-120b              # OpenAI-compatible HPC endpoint
+      api_base: os.environ/SOVEREIGN_BASE_URL # Jetstream2 / campus HPC / vLLM
+      api_key: os.environ/SOVEREIGN_TOKEN
+      order: 2                                # sovereign, zero marginal cost
+    model_info: {tier: sovereign, cost_class: free}
+
+  - model_name: work
+    litellm_params:
+      model: openrouter/deepseek/deepseek-chat
+      api_key: os.environ/OPENROUTER_API_KEY
+      order: 3                                # cheap open-weight API
+    model_info: {tier: open_api, cost_class: metered}
+
+  - model_name: work
+    litellm_params:
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      order: 4                                # frontier: hybrid mode only
+    model_info: {tier: frontier, cost_class: metered}
+
+  # ---- judgment: planning, review, milestone gates -------------------------
+  # Deliberately NOT a cheap-first ladder. A bad plan poisons every stage under
+  # it, so this group starts at the ceiling.
+  - model_name: judgment
+    litellm_params:
+      model: anthropic/claude-opus-4-8
+      api_key: os.environ/ANTHROPIC_API_KEY
+      order: 1
+    model_info: {tier: frontier, cost_class: metered, scarce: true}
+
+  - model_name: judgment
+    litellm_params:
+      model: openai/gpt-oss-120b
+      api_base: os.environ/SOVEREIGN_BASE_URL
+      api_key: os.environ/SOVEREIGN_TOKEN
+      order: 2                                # open fallback for full-open mode
+    model_info: {tier: sovereign, cost_class: free}
+
+  # ---- steward: triage, classify, route, adapt, propose checks -------------
+  # Always local. Free, private, warm. Never routed off-machine.
+  - model_name: steward
+    litellm_params:
+      model: ollama/qwen2.5-coder:7b
+      api_base: http://localhost:11434
+    model_info: {tier: local, cost_class: free}
+
+router_settings:
+  routing_strategy: simple-shuffle    # `order` governs; shuffle breaks ties
+  num_retries: 2
+  allowed_fails: 1
+  cooldown_time: 300                  # a 429 sidelines a deployment, not the run
+  enable_pre_call_checks: true
+  fallbacks:
+    - {work: [judgment]}              # exhausted the work ladder -> judgment
+  # Health checks surface a dead HPC endpoint before a task discovers it.
+  background_health_checks: true
+  health_check_interval: 300
+
+litellm_settings:
+  drop_params: true                   # tolerate provider param mismatches
+  success_callback: ["langfuse"]      # outcome store; see PLATFORM.md §6
+  failure_callback: ["langfuse"]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL   # Postgres: routing state + outcomes

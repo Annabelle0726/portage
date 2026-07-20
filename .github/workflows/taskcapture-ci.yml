@@ -1,0 +1,63 @@
+name: taskcapture-ci
+
+# Lane B. Everything here is non-interactive Claude Code usage, which since
+# 2026-06-15 draws the separate monthly credit (then API rates) on Max plans —
+# NOT your interactive 5h/weekly pool. So the reviewer never competes with your
+# hands-on-keyboard work.
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---- The milestone gate: deterministic, no model, must pass. ----
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Run test suite (Milestone gate)
+        run: uv run pytest -q
+
+  # ---- Automated review: only runs if the gate is green. ----
+  review:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Claude Code + router
+        run: |
+          npm install -g @anthropic-ai/claude-code @musistudio/claude-code-router
+      - name: Router config
+        run: |
+          mkdir -p ~/.claude-code-router
+          cp .claude-code-router/config.ci.json ~/.claude-code-router/config.json
+      - name: Review diff against milestone criteria
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          DIFF=$(git diff origin/main...HEAD)
+          # Review is a "think" task -> routes to Opus via config; a fresh,
+          # context-clean pass, which is exactly what catches what the writer
+          # rubber-stamped. Milestone-gate criteria are pinned to the frontier
+          # model and never downshifted.
+          ccr code -p "You are reviewing a PR against the taskcapture milestone \
+          criteria (extraction correctness, routing to Todoist, no regressions in \
+          the milestone-gated approval flow). Report blocking issues only, concise. \
+          Diff:\n${DIFF}" | tee review.md
+      - name: Post review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('review.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### Automated review (Lane B / CCR)\n\n${body}`
+            });

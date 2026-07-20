@@ -1,0 +1,254 @@
+# PLATFORM.md — final definition (working name: **Commons**)
+
+A self-hostable, verifier-driven, sovereignty-aware agent control plane for
+Code, Science, Design, and Cowork — open-weight by default, benchmarked honestly
+against the subscription products it replaces (Claude, ChatGPT/Codex,
+Perplexity). This document is the capstone: it synthesizes the landscape survey
+(`routing-layer-landscape-2026.md`), the platform overview received from
+Perplexity, and everything in `specs/00–08`, and it supersedes them where they
+conflict. Name is provisional; the ethos it should carry is public-infrastructure
+Open Access.
+
+---
+
+## 1. What was adopted, corrected, and kept from the survey overview
+
+**Adopted** (the overview got these right):
+- **OpenHands** as the agent-execution and Cowork substrate (fleets, sandboxes,
+  least-privilege, workflow-level usage tracking). Our thin core stays portable;
+  OpenHands is the *execution* layer, not the identity of the platform.
+- **LiteLLM Auto Routing + Adaptive Router** as the online routing spine, with
+  **Postgres** as routing/outcome memory and **RouteLLM-style offline
+  retraining** as the learning loop. This upgrades our static ladder into a
+  router that *learns from verifier outcomes* — the natural completion of the
+  measurement layer we already had.
+- The **policy → router → verifier → learner** ordering, and the 3-mode framing
+  (full-open / hybrid / sovereign) as policy configurations of one platform.
+
+**Corrected** (where the overview was missing things we'd already solved):
+- It has an eligibility filter but **no triage**: nothing catches an
+  underspecified task before dispatch. Our clarify-before-dispatch classifier
+  (deterministic pins first, local model second, uncertainty escalates upward)
+  is reinstated as a mandatory stage between policy and router.
+- It has no **plan-first decomposition with runnable per-subtask acceptance
+  checks** and no human plan gate. Reinstated (specs/01; OpenSpec schema per
+  specs/08).
+- It logs "ceiling-stall" but lacks the **honesty gate** — the rule that an
+  efficiency win is void if the stall rate rose. Reinstated as a platform-wide
+  invariant, and generalized in the benchmark suite (§5) as non-inferiority.
+- Its tier ladder is open-source-only; for the *benchmark* the subscription
+  lanes must exist as first-class arms, so the meters layer (herdr-meters,
+  quota accounting) is kept — not as product, as **instrumented baseline**.
+
+**Kept from our build, unchanged:** the deterministic fail-up guard (verdict:
+still novel), the sensitive-data pin by config absence, Herdr as the terminal
+surface, the scheduling/off-hours drain, and the maintenance rails (pinning,
+stub-LLM CI tests, nightly canary, Renovate custom datasource).
+
+## 2. Architecture (merged)
+
+```
+                     ┌──────────── policy (eligibility, mode, data pins) ────────────┐
+ task ─▶ TRIAGE ────▶│ clarify-or-dispatch; deterministic pins run first, always win │
+                     └──────────────┬────────────────────────────────────────────────┘
+                                    ▼
+                       LiteLLM proxy (auto + adaptive routing, cooldowns, groups)
+                        Tier0 rules · T1 local Ollama · T2 cheap open API ·
+                        T3 open coding models · T4 open general/long-context ·
+                        T5 sovereign HPC (vLLM) · T6 frontier (policy-gated)
+                                    ▼
+                       OpenHands execution (Code/Science/Design/Cowork profiles,
+                        sandboxes, subagent fleets, plan-first decomposer for
+                        large tasks with runnable acceptance checks + human gate)
+                                    ▼
+                       VERIFIER (deterministic, lane-specific — §4): decides
+                        pass/fail; fail-up guard escalates one tier and retries
+                                    ▼
+                       Postgres outcome store ─▶ short-term: adaptive-router
+                        priors · long-term: RouteLLM offline retrain
+                       Langfuse traces ─▶ custom quality-adjusted metrics
+```
+
+Escalation policy: **open-to-open first** (T1→T2→T3/T4→T5) before any
+open-to-closed step; T6 exists only in hybrid mode and is confirm-gated.
+
+## 3. Modes
+
+| Mode | Constraint | Use |
+|---|---|---|
+| full-open | model_list contains no commercial endpoints | the platform under test; also offline/air-gapped |
+| hybrid | frontier allowed as verified fail-up ceiling only | daily driving; the practical config |
+| sovereign | all routes pinned local + institutional; commercial absent | clinical/regulated/EduCloud work |
+
+Sensitive workspaces remain a *config variant with tiers absent*, never a
+runtime check.
+
+## 4. Lane-specific verifiers (new — this is what makes "Science/Design" real)
+
+The guard's principle — a runner decides, never the model — generalized per
+lane. Without these, only Code was actually verifiable:
+
+- **Code:** non-empty diff + lint + tests (existing), plus optional typecheck.
+- **Science:** every citation must **resolve** (URL/DOI fetch 200 + title
+  match); every keyed claim in the task's rubric present with a source;
+  numbers in the report traceable to a fetched source or produced by included
+  code; report re-runs from included code/data (reproducibility check).
+  Hallucinated-citation rate is a first-class metric, not an anecdote.
+- **Design:** build passes, accessibility lint (axe) clean, optional
+  screenshot-diff against reference within threshold, design-token lint (no
+  hardcoded values where tokens exist).
+- **Cowork/plans:** per-subtask runnable acceptance commands + integration
+  check (existing decomposer).
+
+## 5. The Parity Bench — comparison suite (the centerpiece)
+
+Purpose: test the full-open platform **against the subscriptions** — Claude
+Code above all, Codex, and Perplexity — with results a skeptic would accept.
+
+### 5.1 The confound, and the factorial design that removes it
+
+"Open platform vs Claude Code" confounds **harness** with **model**. So the
+core experiment is a 2×2 factorial, per task:
+
+| | our harness (Commons) | native harness |
+|---|---|---|
+| **open model** | A1 (the platform) | A3 Claude Code → LiteLLM → open model |
+| **frontier model** | A2 hybrid-ablation | A4 native Claude Code / Codex |
+
+A1 vs A4 is the headline; A2 and A3 decompose any gap into *harness effect*
+vs *model effect* vs their interaction. This is what makes a loss
+diagnosable and a win credible.
+
+### 5.2 Task suites (preregistered before any arm runs)
+
+- **Code-private (n≈20–30):** real tasks from your repos (taskcapture,
+  course-infra), each with a runnable acceptance check written *first*.
+- **Code-public (n≈10):** a fixed SWE-bench-Verified-style sample for external
+  comparability.
+- **Science (n≈10–15):** research questions with keyed rubrics (required
+  facts, resolvable-citation requirement). Perplexity Deep Research is the
+  baseline arm here — **human-executed** (app-only), same wall-clock budget,
+  outputs scored by the same rubric.
+- **Cowork/multistage (n≈5):** plan-first tasks through the decomposer in
+  each capable arm.
+
+Preregistration = task list, acceptance checks, metrics, non-inferiority
+margin, and analysis plan committed to the repo before run 1. All logs
+published.
+
+### 5.3 Metrics
+
+**Primary**
+1. **Verified success rate** (deterministic verifier; per lane).
+2. **Cost per verified success**, under all three accounting models (§5.4).
+3. **Wall-clock to verified success** (fixed per-task budget; timeout = fail).
+4. **Human interventions** (count + minutes: clarifications answered,
+   approvals, manual fixes).
+
+**Secondary**
+5. Escalation depth and win-tier distribution; 6. ceiling-stall rate;
+7. human-fix edit distance (diff between agent output and what you actually
+kept); 8. discard/revert rate; 9. Science lane: rubric coverage %, citation
+resolvability %, hallucinated-citation rate; 10. tokens and energy proxy
+(tokens × model size class) for the sovereignty story.
+
+**Honesty gates (platform invariants applied to the benchmark)**
+- **Non-inferiority first:** no arm may claim a cost/speed win unless its
+  verified success rate is within a preregistered margin (default 5 pp) of
+  the best arm on that suite. The stall-gate rule, generalized.
+- Paired analysis only (same task across arms), bootstrap CIs on paired
+  differences; no metric reported without its n.
+- Thin-data label under preregistered minimum n, exactly as in
+  `measure.py downscale`.
+
+### 5.4 Cost accounting for flat subscriptions (novel, required)
+
+Comparing per-token arms with flat-rate arms needs three prices, reported
+side by side:
+
+- **Marginal $/task** — API arms: tokens×price; subscription arms: ≈0.
+- **Amortized $/task** — subscription price ÷ verified successes on that lane
+  that month (the number that answers "is the subscription worth it").
+- **Quota-share cost** — fraction of the binding cap consumed × subscription
+  price (Claude: Opus cap tracked separately; Codex: Plus 5h window). The
+  scarcity price of a "free" task.
+
+Downscale decisions read amortized + quota-share; API-substitution decisions
+read marginal. Conflating them is how every public comparison lies.
+
+### 5.5 Runner
+
+`bench.py` (build item): reads the preregistered suite, executes arms A1–A4
+(A-Perplexity human-guided with a scripted checklist), enforces wall-clock
+budgets, writes every attempt to the same Postgres/Langfuse schema the
+platform already uses, and refuses to emit a summary that violates a gate.
+Subscription arms run through Lane B non-interactive paths where automated,
+respecting ToS (no multi-account, no scraping around limits).
+
+## 6. Learning loop (closing the circle)
+
+Verifier outcomes are the training signal: short-term, LiteLLM's adaptive
+router updates per-request-type priors (documented to stabilize after ~10
+requests per model); long-term, periodic RouteLLM-style retraining on the
+Postgres log. The benchmark suite doubles as the evaluation set for router
+retraining — the platform literally learns from the comparison against its
+competitors. Routing changes are versioned; a retrained router must beat the
+prior router on the held-out suite before deployment (same non-inferiority
+gate).
+
+## 7. What was missing and is now added (explicit)
+
+1. Lane-specific verifiers for Science and Design (§4) — without them the
+   platform was a coding tool with aspirations.
+2. **Open research stack** for the Science profile: SearXNG (self-hosted
+   metasearch) + open fetch/crawl + the citation verifier. Required to test
+   against Perplexity at all; also the sovereign research path.
+3. The factorial ablation design (§5.1) and `bench.py`.
+4. The three-model cost accounting (§5.4).
+5. Learning-loop wiring with versioned, gated router updates (§6).
+6. Artifact & session memory: Postgres-backed artifact store + generalized
+   state snapshots (the PreCompact pattern platform-wide), so Cowork teams
+   and Science reports persist across sessions and machines.
+7. Profile definitions as config (Code/Science/Design/Cowork = interaction
+   profiles: system prompts, toolsets, verifiers, default tiers) — the
+   product-surface analogue without cloning vendor features.
+8. A working name, a license decision to make (recommend Apache-2.0 to match
+   the stack), and this document as the single source of truth.
+9. **The steward model** (`specs/09`): one warm local model doing all five
+   pre-dispatch jobs — triage, classify, route, shape, propose acceptance
+   checks — prompted+rules now, verifier-fine-tuned later. Prompt shaping is
+   additive-only with the original always preserved, so it is measurable
+   rather than assumed. Its training label is the deterministic verifier's
+   verdict, which makes the platform's ground truth do double duty: it trains
+   the router (§6) and the steward from the same records.
+
+## 8. Honest limits
+
+- **OpenHands is a large dependency.** Adopt its control plane; keep our core
+  (guard, triage, verifiers, metrics) framework-agnostic so it survives a
+  substrate change.
+- **Benchmark labor is real.** Full suite × 4 arms is days of runtime and
+  attention. Start with a 12-task pilot cut to debug the runner and rubrics
+  before the preregistered run.
+- **The Perplexity arm cannot be automated** (consumer tier is app-only); its
+  protocol is human-executed and therefore noisier — say so in reporting.
+- **Open-model pricing/rankings in the overview are point-in-time** (DeepSeek
+  V4 Flash, Qwen3-Coder, Gemma 4 etc.); the ladder is config, re-checked at
+  bench time, never hardcoded in claims.
+- The learning loop needs volume; until a few hundred verified outcomes
+  exist, adaptive routing priors are weak — run static ladder + fail-up
+  until the log earns the learner.
+- Subscription arms are moving targets (models, limits, harness updates);
+  every benchmark report carries a date and exact versions, and comparisons
+  expire.
+
+## 9. Build-order delta (appends to HANDOFF.md)
+
+Phase 7: lane verifiers (science citation-resolver first) + open research
+stack. Phase 8: Postgres outcome store + Langfuse wiring; migrate measure.py
+metrics onto it (keep the JSONL path as fallback). Phase 9: `bench.py` +
+preregistration templates + the 12-task pilot. Phase 10: adaptive-router
+enablement + first gated RouteLLM retrain, and steward Phase B/C
+(distillation bootstrap, then verifier-tuned fine-tune) — both gated by the
+same held-out non-inferiority rule. OpenHands adoption can proceed in
+parallel from Phase 7; nothing earlier depends on it.

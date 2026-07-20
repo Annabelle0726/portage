@@ -1,0 +1,55 @@
+id = "meters.hybrid"
+name = "Meters"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Cross-vendor meter awareness and dispatch: one interface over Claude Max, ChatGPT Plus/Codex, local models, and Perplexity."
+platforms = ["linux", "macos"]
+
+# No [[build]] — pure Python stdlib, nothing to compile.
+
+[[actions]]
+id = "board"
+title = "Meters: status board"
+contexts = ["workspace"]
+command = ["python3", "meters.py", "board"]
+
+[[actions]]
+id = "dispatch"
+title = "Meters: send task to best available meter"
+contexts = ["workspace"]
+command = ["python3", "meters.py", "dispatch"]
+
+[[actions]]
+id = "research"
+title = "Meters: Deep Research (Perplexity Pro, app-only lane)"
+contexts = ["workspace"]
+command = ["python3", "meters.py", "research"]
+
+[[actions]]
+id = "classify"
+title = "Meters: explain routing for a task (no dispatch)"
+contexts = ["workspace"]
+command = ["python3", "classify.py"]
+
+[[actions]]
+id = "mark"
+title = "Meters: mark focused pane's meter as rate-limited"
+contexts = ["workspace"]
+command = ["python3", "meters.py", "mark"]
+
+# The picker is the main surface: a popup that shows every meter's state and
+# lands you (or your task) on the right pane.
+[[panes]]
+id = "picker"
+title = "Meters"
+placement = "popup"
+width = "80%"
+height = 20
+command = ["python3", "meters.py", "picker"]
+
+# Optional: bind the picker. Add to your Herdr config, not the manifest.
+#   [[keys.command]]
+#   key = "prefix+m"
+#   type = "plugin_action"
+#   command = "meters.hybrid.board"
+#   description = "meters"

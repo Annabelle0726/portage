@@ -1,0 +1,31 @@
+{
+  "LOG": true,
+  "Providers": [
+    {
+      "name": "local",
+      "api_base_url": "http://imac.your-tailnet.ts.net:11434/v1/chat/completions",
+      "api_key": "ollama",
+      "models": ["qwen2.5-coder:32b", "qwen2.5-coder:7b"]
+    },
+    {
+      "name": "cheap",
+      "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key": "$OPENROUTER_API_KEY",
+      "models": ["deepseek/deepseek-chat"]
+    },
+    {
+      "name": "anthropic",
+      "api_base_url": "https://api.anthropic.com/v1/messages",
+      "api_key": "$ANTHROPIC_API_KEY",
+      "models": ["claude-sonnet-5", "claude-opus-4-8"]
+    }
+  ],
+  "Router": {
+    "default": "anthropic,claude-sonnet-5",
+    "background": "local,qwen2.5-coder:7b",
+    "think": "anthropic,claude-opus-4-8",
+    "longContext": "anthropic,claude-opus-4-8",
+    "longContextThreshold": 60000,
+    "webSearch": "anthropic,claude-sonnet-5"
+  }
+}

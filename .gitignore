@@ -1,0 +1,11 @@
+# Runtime state written by hooks and the guards (snapshots, transcript backups,
+# plans, failup/decomp logs). Regenerated; never committed.
+.claude/state/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local router credentials should come from env, never a committed file
+.claude-code-router/config.local.json

@@ -1,0 +1,6 @@
+[
+  "local,qwen2.5-coder:7b",
+  "local,qwen2.5-coder:32b",
+  "anthropic,claude-sonnet-5",
+  "anthropic,claude-opus-4-8"
+]

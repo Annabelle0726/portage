@@ -1,0 +1,6 @@
+[
+  "local,qwen2.5-coder:7b",
+  "sovereign,gpt-oss-120b",
+  "anthropic,claude-sonnet-5",
+  "anthropic,claude-opus-4-8"
+]
