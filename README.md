@@ -14,6 +14,7 @@ against the subscription products it aims to replace.
 | **`PLATFORM.md`** | The capstone: final architecture, the three modes, lane verifiers, and the **Parity Bench** comparison suite. Start here. |
 | **`HANDOFF.md`** | Build instructions: buy-vs-build resolution, phases 0–10, acceptance criteria, standing rules. |
 | `PROJECT.md` | Mission and the novelty claim (what is actually new vs. the ecosystem). |
+| **`KICKOFF-PROMPT.md`** | The prompt to paste into Claude Code for session 1, and how to scope later sessions. |
 | `EDUCLOUD-BRIEF.md` | Positioning brief for EduCloud stakeholders: decentralized AI as public infrastructure, and why education specifically needs it. |
 | `specs/00`–`09` | The reasoning record. Each spec explains *why*, not just what. |
 
