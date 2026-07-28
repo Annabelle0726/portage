@@ -43,9 +43,15 @@ Open Access.
   quota accounting) is kept — not as product, as **instrumented baseline**.
 
 **Kept from our build, unchanged:** the deterministic fail-up guard (verdict:
-still novel), the sensitive-data pin by config absence, Herdr as the terminal
-surface, the scheduling/off-hours drain, and the maintenance rails (pinning,
-stub-LLM CI tests, nightly canary, Renovate custom datasource).
+still novel), the sensitive-data pin by config absence, and the maintenance
+rails (pinning, stub-LLM CI tests, nightly canary, Renovate custom datasource).
+The off-hours scheduler was retired with the subscription premise (CW02 §2.4).
+
+**Naming (2026-07-28, CW02):** *Herdr* names the policy brain — classify,
+adapt, budget, capability selection, verification state — sitting above LiteLLM
+(transport spine) per the Scale-1 pilot hierarchy. `herdr-meters/` is its seed
+implementation; the terminal multiplexer is one surface it drives. LiteLLM
+never owns policy; Herdr never owns provider-infrastructure routing.
 
 ## 2. Architecture (merged)
 
@@ -56,14 +62,19 @@ stub-LLM CI tests, nightly canary, Renovate custom datasource).
                                     ▼
                        LiteLLM proxy (auto + adaptive routing, cooldowns, groups)
                         T0 deterministic (pins/overrides/allowlist) ·
-                        T1 local_fast (iMac) · T2 local_burst (MacBook, worker not RAM) ·
-                        T3 local_large (future 128GB node) ·
-                        T4 sovereign (Jetstream2/campus HPC — zero marginal cost) ·
-                        T5 remote_open (OpenRouter, open-weight allowlist) ·
-                        T6 remote_open_direct (Together/DeepInfra) ·
-                        T7 proprietary_payg (Anthropic/OpenAI/Perplexity — hybrid only,
-                        boundary-gated: verified open failure, documented specialist,
-                        or explicit override)
+                        T1 local_fast (iMac warm + MacBook dynamic — ONE rung,
+                        TWO health-checked deployments) ·
+                        T2 local_large (DORMANT: future 128GB node, enabled: auto) ·
+                        T3 remote_open_fast (Groq, pinned model IDs) ·
+                        T4 remote_open_broad (OpenRouter, open-weight allowlist + ZDR) ·
+                        T5 remote_open_direct (DORMANT: Together — re-enable on
+                        OpenRouter-unavailability telemetry) ·
+                        T6 proprietary (Anthropic/OpenAI/Perplexity Sonar PAYG —
+                        hybrid only, boundary-gated: verified open failure,
+                        budget envelope, logged reason, confirm gate) ·
+                        T7 CEILING_STALL (terminal state, stall artifact).
+                        EduCloud profile inserts institutional_sovereign
+                        between T2 and T3 by config — no personal sovereign rung
                                     ▼
                        OpenHands execution (Code/Science/Design/Cowork profiles,
                         sandboxes, subagent fleets, plan-first decomposer for
@@ -80,8 +91,8 @@ stub-LLM CI tests, nightly canary, Renovate custom datasource).
                        Langfuse traces ─▶ custom quality-adjusted metrics
 ```
 
-Escalation policy: **open-to-open first** (T1→T2→T3→T4→T5→T6) before any
-open-to-closed step; T7 exists only in `hybrid` mode and is boundary-gated, never
+Escalation policy: **open-to-open first** (T1→[T2]→T3→T4→[T5]) before any
+open-to-closed step; T6 exists only in `hybrid` mode and is boundary-gated, never
 reached just because it would perform better. Full ladder, mode table, and the
 transition plan are in `REVISION-PLAN.md` and `specs/10`–`11`.
 
@@ -89,9 +100,9 @@ transition plan are in `REVISION-PLAN.md` and `specs/10`–`11`.
 
 | Mode | Rungs | Constraint | Use |
 |---|---|---|---|
-| `open_weight_only` | T0–T6 | model_list contains no commercial endpoints; hosted-open (T5/T6) is allowed because the weights are downloadable, only the compute is rented | end state; also offline/air-gapped |
-| `hybrid` | T0–T7 | T7 allowed only as a boundary-gated fail-up ceiling (verified open failure / documented specialist / explicit override) — never a fixed subscription rung | **current mode.** Daily driving during the Scale-1 pilot |
-| `sovereign` | T0–T4 | all routes pinned local + institutional; commercial *and* hosted-open both absent | clinical/regulated/EduCloud student-facing lanes |
+| `open_weight_only` | T0–T5 | model_list contains no commercial endpoints; hosted-open (T5/T6) is allowed because the weights are downloadable, only the compute is rented | end state; also offline/air-gapped |
+| `hybrid` | T0–T7 | T6 allowed only as a boundary-gated fail-up ceiling (verified open failure / documented specialist / explicit override) — never a fixed subscription rung | **current mode.** Daily driving during the Scale-1 pilot |
+| `sovereign` | T0–T2 (+`institutional_sovereign` at Scale 2) | all routes pinned local + institutional; commercial *and* hosted-open both absent | clinical/regulated/EduCloud student-facing lanes |
 
 `sovereign` is stricter than `open_weight_only`: it excludes hosted-open
 infrastructure too, not just proprietary weights. Sensitive workspaces remain a

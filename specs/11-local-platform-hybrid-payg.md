@@ -2,6 +2,12 @@
 
 *Recommended Scale 1 transition architecture: open-weight models receive the workload first; proprietary APIs remain available only as metered, evidence-based escalation.*
 
+> **Revised 2026-07-28 per CW02-decisions.md §3 (dormant-slot synthesis).**
+> local_burst is no longer a tier — the MacBook is a second health-checked
+> deployment of `local_fast`. The freed T2 slot holds `local_large` (dormant,
+> enabled: auto). Groq enters at T3 (`remote_open_fast`); Together is a
+> defined-but-dormant T5. Capability aliases are the seven-cell set in CW02 §3.
+
 ## Purpose
 
 This is the recommended **production transition mode** while the platform measures whether open-weight models have reached sufficient parity for the user's real workloads.
@@ -51,16 +57,20 @@ The target is to eliminate recurring model subscriptions immediately while prese
                            |
         +------------------+------------------+
         |                  |                  |
-   local-fast          local-burst       local-large
-      iMac             MacBook Pro      future 128GB node
+   local-fast                           local-large
+   iMac + MacBook Pro                 future 128GB node
+   (two deployments, one rung)        (dormant, enabled: auto)
         |                  |                  |
         +------------------+------------------+
                            |
-                      remote-open
-                        OpenRouter
+                    remote-open-fast
+                         Groq
+                           |
+                    remote-open-broad
+                       OpenRouter
                            |
                   remote-open-direct
-                 Together / DeepInfra
+           [DORMANT — Together / DeepInfra]
                            |
                 proprietary-specialist
            Anthropic / OpenAI / Perplexity
@@ -110,9 +120,13 @@ Always preferred when likely to succeed.
 
 ---
 
-### 2. `local_burst`
+### 2. `local_fast`, second deployment (formerly `local_burst`)
 
-**Primary host:** MacBook Pro when available.
+No longer a tier (CW02 §2.1): tiers are capability rungs, machines are
+deployments. LiteLLM load-balances the MacBook inside `local_fast` with health
+checks; it buys availability, not capability.
+
+**Host:** MacBook Pro when available.
 
 Use for:
 
@@ -149,13 +163,14 @@ Use for:
 Expose capability aliases rather than permanent model names:
 
 ```text
-local/code-large
-local/reasoning-large
-local/research-large
-local/vision-large
+code_large
+research_synthesis
 ```
 
-Parity Bench determines the model assigned to each alias.
+Parity Bench determines the model assigned to each alias. The alias
+vocabulary is the seven-cell set in CW02-decisions §3; the former `local/*`
+namespace is retired — where a capability runs is a deployment property, not
+part of the alias.
 
 ---
 
@@ -182,7 +197,9 @@ Do not use an unrestricted auto-router that may select proprietary models.
 
 ### 5. `remote_open_direct`
 
-**Recommended primary direct provider:** Together AI.
+**Direct-provider slot — DORMANT** (CW02 §2.1; deferred for the pilot —
+OpenRouter already routes to Together endpoints; re-enable on
+OpenRouter-unavailability telemetry). When enabled: Together AI.
 
 Reasons:
 
@@ -317,21 +334,19 @@ Cancel fixed high-cost model subscriptions once the PAYG escape hatch is tested 
 ### Phase B — after adding high-memory local compute
 
 ```text
-local-fast
-  -> local-burst
-    -> local-large
-      -> hosted open
-        -> proprietary PAYG
+local-fast (both machines)
+  -> local-large
+    -> hosted open (Groq -> OpenRouter)
+      -> proprietary PAYG
 ```
 
 ### Phase C — target state
 
 ```text
-local-fast
-  -> local-burst
-    -> local-large
-      -> hosted open
-        -> proprietary calls approaching zero
+local-fast (both machines)
+  -> local-large
+    -> hosted open (Groq -> OpenRouter)
+      -> proprietary calls approaching zero
 ```
 
 At this point, the same architecture can be switched to `open_weight_only` without redesigning Herdr.
@@ -363,9 +378,9 @@ Do not surrender model-policy decisions to an unrestricted router.
 
 ---
 
-### Together AI — direct hosted-open backup
+### Together AI — direct hosted-open backup (dormant slot)
 
-Recommended because serverless inference provides:
+When enabled, serverless inference provides:
 
 - per-token billing
 - no provisioning/minimum server requirement
@@ -461,20 +476,17 @@ Use capability aliases:
 
 ```text
 classifier
-small-code
-medium-code
-large-code
-reasoning
-research-synthesis
-vision
+code_small
+code_large
+research_synthesis
 embedding
-reranker
-proprietary-code
-proprietary-reasoning
-proprietary-research
+proprietary_code
+proprietary_research
 ```
 
-Avoid permanent provider/model coupling.
+Avoid permanent provider/model coupling. `code_medium`, `vision`, `reranker`
+earn cells when telemetry shows a routing decision that needs them
+(scale-mapping §4.3).
 
 The platform should be able to replace a model without changing business logic.
 
@@ -515,18 +527,19 @@ policy_mode: hybrid
 
 providers:
   local_fast:
-    enabled: true
-  local_burst:
-    enabled: true
+    enabled: true          # two deployments: iMac + MacBook (CW02 §2.1)
   local_large:
-    enabled: auto
+    enabled: auto          # dormant T2 slot
+  groq:
+    enabled: true
+    open_weight_only_for_open_rungs: true
 
   openrouter:
     enabled: true
     open_weight_only_for_open_rungs: true
 
   together:
-    enabled: true
+    enabled: false         # DORMANT — re-enable on OpenRouter-unavailability telemetry
     open_weight_only_for_open_rungs: true
 
   deepinfra:

@@ -2,6 +2,12 @@
 
 *Recommended Scale 1 architecture for eliminating proprietary-model dependence while retaining local and hosted open-weight inference.*
 
+> **Revised 2026-07-28 per CW02-decisions.md §3 (dormant-slot synthesis).**
+> local_burst is no longer a tier — the MacBook is a second health-checked
+> deployment of `local_fast`. The freed T2 slot holds `local_large` (dormant,
+> enabled: auto). Groq enters at T3 (`remote_open_fast`); Together is a
+> defined-but-dormant T5. Capability aliases are the seven-cell set in CW02 §3.
+
 ## Purpose
 
 This mode is the long-term sovereignty target.
@@ -51,16 +57,20 @@ The goal is:
                            |
         +------------------+-------------------+
         |                  |                   |
-   local-fast          local-burst        local-large
-      iMac             MacBook Pro       future 128GB node
+   local-fast                            local-large
+   iMac + MacBook Pro                  future 128GB node
+   (two deployments, one rung)         (dormant, enabled: auto)
         |                  |                   |
         +------------------+-------------------+
                            |
-                      remote-open
-                        OpenRouter
+                    remote-open-fast
+                         Groq
+                           |
+                    remote-open-broad
+                       OpenRouter
                            |
                   remote-open-direct
-                 Together / DeepInfra
+           [DORMANT — Together / DeepInfra]
                            |
                        CEILING_STALL
 ```
@@ -119,11 +129,14 @@ privacy: local
 
 ---
 
-### 2. `local_burst`
+### 2. `local_fast`, second deployment (formerly `local_burst`)
 
-**Primary host:** MacBook Pro when online.
+**Host:** MacBook Pro when online.
 
-The MacBook is not treated as extra RAM for the iMac. It is a second inference worker.
+No longer a tier (CW02 §2.1): tiers are capability rungs, machines are
+deployments. The MacBook runs the same models as the iMac, so escalating to it
+buys no capability — LiteLLM load-balances it inside `local_fast` with health
+checks. It is not extra RAM for the iMac; it is a second inference worker.
 
 Best uses:
 
@@ -167,14 +180,14 @@ Recommended target:
 This tier should expose **capability aliases**, not hard-coded permanent model names:
 
 ```text
-local/code-medium
-local/code-large
-local/reasoning-large
-local/research-synthesis
-local/vision
+code_large
+research_synthesis
 ```
 
 The model behind each alias should be selected by Parity Bench results.
+The alias vocabulary is the seven-cell set in CW02-decisions §3; the former
+`local/*` namespace is retired — where a capability runs is a deployment
+property, not part of the alias.
 
 The purpose of this node is to make substantially larger open-weight models locally available without replacing the iMac as the normal workstation.
 
@@ -226,7 +239,11 @@ OpenRouter supports provider ordering/restriction, fallback control, ZDR filteri
 
 Maintain at least one direct hosted-open provider as a resilience path.
 
-### Recommended primary direct provider: Together AI
+### Direct-provider slot — DORMANT (Together AI when enabled)
+
+> Deferred for the pilot (CW02 §2.1; scale-mapping §4.1): OpenRouter already
+> routes to Together endpoints. Re-enable on OpenRouter-unavailability
+> telemetry. When enabled, Together AI is the recommended primary because:
 
 Why:
 
@@ -258,17 +275,16 @@ Use role-specific capability aliases.
 
 ```text
 classifier
-small-code
-medium-code
-large-code
-reasoning
-research-synthesis
-vision
+code_small
+code_large
+research_synthesis
 embedding
-reranker
 ```
 
 Herdr then maps each capability to the currently best validated model.
+Five open aliases here; `proprietary_code` / `proprietary_research` exist only
+in hybrid mode (specs/11). `code_medium`, `vision`, `reranker` earn cells when
+telemetry shows a routing decision that needs them (scale-mapping §4.3).
 
 Candidate families should be selected from current downloadable open-weight models such as:
 
@@ -301,7 +317,7 @@ verified?
  |
  no
  |
-local_burst or local_large
+local_fast #2 (MacBook) or local_large
  |
 verified?
  +-- yes --> complete
@@ -454,11 +470,12 @@ policy_mode: open_weight_only
 
 providers:
   local_fast:
-    enabled: true
-  local_burst:
-    enabled: true
+    enabled: true          # two deployments: iMac + MacBook (CW02 §2.1)
   local_large:
-    enabled: auto
+    enabled: auto          # dormant T2 slot
+  groq:
+    enabled: true
+    open_weight_only: true
   openrouter:
     enabled: true
     open_weight_only: true
@@ -484,7 +501,7 @@ Track at minimum:
 
 ```text
 % solved by local_fast
-% solved by local_burst
+% solved by the MacBook deployment (local_fast #2)
 % solved by local_large
 % solved by hosted open-weight
 % ending in ceiling stall

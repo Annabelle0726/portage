@@ -21,16 +21,19 @@ core never depends on backend internals.
 > Codex Plus) are removed from the production ladder and replaced by hosted
 > open-weight (OpenRouter/Together) + a boundary-gated proprietary **PAYG**
 > ceiling. Subscriptions survive only as Parity Bench baseline arms. The
-> scale-invariance rule is unchanged.
+> scale-invariance rule is unchanged. Ladder revised again 2026-07-28 per
+> CW02-decisions.md §3 (dormant-slot synthesis; Groq at T3). The Scale-2/3
+> sections below move to the EduCloud umbrella at CC-P0 v2 (CW02 §4).
 
 ---
 
 ## Scale 1 — Personal (laptop/iMac + open-weight + PAYG ceiling)
 
-Ladder (`policy_mode: hybrid`): `local_fast (iMac) → local_burst (MacBook) →
-[local_large: future 128GB] → remote_open (OpenRouter, open-weight allowlist) →
-remote_open_direct (Together; DeepInfra optional) → proprietary_payg
-(Anthropic/OpenAI PAYG, boundary-gated)`. Perplexity Sonar is the Science-lane
+Ladder (`policy_mode: hybrid`): `local_fast (iMac + MacBook, two deployments)
+→ [local_large: future 128GB, dormant] → remote_open_fast (Groq) →
+remote_open_broad (OpenRouter, open-weight allowlist) → [remote_open_direct:
+Together, dormant] → proprietary (Anthropic/OpenAI PAYG, boundary-gated)`.
+Perplexity Sonar is the Science-lane
 PAYG specialist behind the open research stack, not an app subscription. End
 state (`open_weight_only`, `specs/10`) drops the last rung.
 
@@ -38,8 +41,9 @@ state (`open_weight_only`, `specs/10`) drops the last rung.
 |---|---|---|
 | Proxy spine | **LiteLLM**, one config.yaml per mode | Already decided; lightweight at n=1 |
 | Guard / triage / meters plugin | **Custom core, as drafted** | Report confirms no substitute exists |
-| Hosted-open aggregation | **OpenRouter** — config, not code; hard open-weight allowlist, provider routing by price/throughput/latency, optional ZDR | The survey confirms provider-restriction + fallback controls are native; do NOT use an unrestricted auto-router that could select proprietary models |
-| Hosted-open direct backup | **Together** (serverless per-token), **DeepInfra** optional | Removes OpenRouter as a single dependency; lets the bench compare aggregation vs direct on the same model. Both are just LiteLLM deployments |
+| Hosted-open fast tier | **Groq** (T3) — pinned model IDs, per-model compatibility record | Fast open-weight escalation before OpenRouter for iterative agent/repair loops (pilot-reconciled §2); automatic prompt caching on the Kimi/GPT-OSS families |
+| Hosted-open aggregation | **OpenRouter** (T4) — config, not code; hard open-weight allowlist, provider routing by price/throughput/latency, optional ZDR | The survey confirms provider-restriction + fallback controls are native; do NOT use an unrestricted auto-router that could select proprietary models |
+| Hosted-open direct backup | **Together — DORMANT slot** (deferred per CW02; re-enable on OpenRouter-unavailability telemetry), **DeepInfra** optional | Removes OpenRouter as a single dependency; lets the bench compare aggregation vs direct on the same model. Both are just LiteLLM deployments |
 | Proprietary ceiling | **Anthropic/OpenAI/Perplexity PAYG** behind LiteLLM budgets, boundary-gated | No fixed subscription rung; reached only on verified open failure / documented specialist / explicit override |
 | Classifier backend | **Ollama 7B + keyword rules** — do NOT deploy vLLM Semantic Router | vLLM SR is deployment-grade (BERT models, dashboard, Envoy); overkill for one user, and the report confirms the clarify/override wrapper stays custom regardless |
 | Plan schema | plan.json as drafted; **OpenSpec format optional** | Cheap to adopt early (it's just a schema + 28k-star tooling), required at Scale 3 — adopting now avoids a migration |
@@ -52,7 +56,8 @@ not new dependencies. The transition itself is Phase 6a in `REVISION-PLAN.md`.
 ## Scale 2 — + HPC (Jetstream2)
 
 Everything in Scale 1, plus the **sovereign tier** made real. It already occupies
-its slot between free-local and hosted-open in the unified ladder (`T4`); at
+its slot between free-local and hosted-open (`institutional_sovereign`,
+inserted between T2 and T3 in the EduCloud profile — CW02-decisions §3); at
 Scale 1 it is simply empty. `local → sovereign HPC (free, no quota draw) →
 hosted open → proprietary PAYG`.
 

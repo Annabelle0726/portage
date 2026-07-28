@@ -2,8 +2,9 @@
 
 > **Updated 2026-07 (Scale-1 transition).** The ladders below are restated in the
 > unified vocabulary of `specs/10`–`11` and `REVISION-PLAN.md`: rungs are
-> `local_fast → local_burst → [local_large] → sovereign → remote_open →
-> remote_open_direct → proprietary_payg`, and the version you run is a
+> `local_fast → [local_large] → remote_open_fast (Groq) → remote_open_broad
+> (OpenRouter) → [remote_open_direct] → proprietary` — dormant slots
+> bracketed; sovereign is an EduCloud-profile insert (CW02-decisions.md §3), and the version you run is a
 > **policy_mode** (`open_weight_only` / `hybrid` / `sovereign`) selected by which
 > LiteLLM config variant is loaded. The old "copy a config.json" mechanism is
 > superseded by config-variant selection; the fail-up guard still reads
@@ -22,12 +23,13 @@ private, use hosted open-weight for what's too big to own, and reach proprietary
 models only as a *verified, boundary-gated* backstop.
 
 **Ladder:**
-`local_fast (iMac) → local_burst (MacBook, when online) → [local_large: future
-128GB node] → remote_open (OpenRouter, allowlisted) → remote_open_direct
-(Together/DeepInfra) → proprietary_payg (Anthropic/OpenAI, PAYG)`
+`local_fast (iMac + MacBook, two health-checked deployments) → [local_large:
+future 128GB node, dormant] → remote_open_fast (Groq) → remote_open_broad
+(OpenRouter, allowlisted) → [remote_open_direct: Together, dormant] →
+proprietary (Anthropic/OpenAI PAYG rescue, confirm-gated)`
 
 **Routing:**
-- `default → local_fast/local_burst` (execution runs on your own hardware)
+- `default → local_fast` (both machines, one rung; execution on your own hardware)
 - `background → local_fast` (compaction/summaries/classify, free)
 - `think / longContext → escalate through the ladder`; proprietary only on
   verified open failure or explicit override — never a fixed rung.

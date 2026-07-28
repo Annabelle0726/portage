@@ -122,30 +122,38 @@ specs/10, specs/11, and this file.*
 
 ```
 T0 deterministic     pins, overrides, triage, license/allowlist checks   (always)
-T1 local_fast        iMac, always-on                                     (always)
-T2 local_burst       MacBook Pro when online — worker, not RAM;
-                     absence logs `unavailable`, never `model_failed`    (always)
-T3 local_large       future 128 GB node — enabled: auto, bought on
-                     displacement evidence                               (always)
-T4 sovereign         Jetstream2 / campus HPC vLLM — zero-marginal-cost,
-                     no quota draw; EMPTY until Phase 6 wires it         (all modes)
-T5 remote_open       OpenRouter, hard open-weight allowlist; provider
+T1 local_fast        iMac warm + MacBook dynamic — ONE capability rung,
+                     TWO health-checked deployments; a sleeping MacBook
+                     logs `unavailable`, never `model_failed`            (always)
+T2 local_large       DORMANT — future 128 GB node, enabled: auto,
+                     bought on the hardware-case dashboard trigger       (always)
+T3 remote_open_fast  Groq — pinned model IDs, per-model compat record    (open+hybrid)
+T4 remote_open_broad OpenRouter, hard open-weight allowlist; provider
                      routing by price/throughput/latency; ZDR optional   (open+hybrid)
-T6 remote_open_direct Together primary, DeepInfra optional               (open+hybrid)
-T7 proprietary_payg  Anthropic / OpenAI / Perplexity Sonar — PAYG,
-                     budget-bounded, boundary-gated (§2.6), logged apart (hybrid only)
-CEILING_STALL        logged with full task profile; never silent
+T5 remote_open_direct DORMANT — Together; defined, disabled; re-enable
+                     trigger: OpenRouter unavailability in telemetry     (open+hybrid)
+T6 proprietary       Anthropic / OpenAI / Perplexity Sonar — PAYG rescue,
+                     verified open failure + budget envelope + logged
+                     reason + confirm gate ($10/30d, no fallbacks)       (hybrid only)
+T7 CEILING_STALL     terminal state, not a routable rung — emits the
+                     stall artifact (attempted tiers + verifier evidence)
 ```
 
 | Mode | Rungs | Use |
 |---|---|---|
-| `open_weight_only` | T0–T6 | end state; hosted open allowed (weights downloadable) |
-| `hybrid` | T0–T7 | **now** — transition; T7 behind the escalation boundary |
-| `sovereign` | T0–T4 | clinical / student-data / EduCloud sensitive lanes — **no remote at all**, commercial or open-hosted |
+| `open_weight_only` | T0–T5 | end state; hosted open allowed (weights downloadable) |
+| `hybrid` | T0–T7 | **now** — transition; T6 behind the escalation boundary |
+| `sovereign` | T0–T2 (+`institutional_sovereign` at Scale 2) | clinical / student-data / EduCloud sensitive lanes — **no remote at all**, commercial or open-hosted |
 
 Note `sovereign ≠ open_weight_only`: sovereign also excludes hosted-open
 (commercial infra serving open weights). Escalation stays open-to-open before
 any open-to-closed step (PLATFORM §2 rule, unchanged).
+
+> **Revised 2026-07-28 per CW02-decisions.md §3** (dormant-slot synthesis):
+> local_burst collapsed into local_fast as a second deployment; Groq added at
+> T3; Together dormant at T5; sovereign is an EduCloud-profile config insert,
+> not a personal rung. §4's file-by-file rows below predate this revision —
+> CW-03 executed the documentation changes; read those rows as history.
 
 ## 4. File-by-file revisions
 
@@ -252,3 +260,18 @@ open-to-closed step. No fan-out orchestration.
   fixtures; T7 refuses without budget.
 - Bench prereg updated with the accounting decision from §2.2 (baseline-first
   or historical-amortized), dated.
+
+## 9. Phase-numbering map (canonical: S0–S5, per LINE-P-ROADMAP.md)
+
+| S-stage | Absorbs |
+|---|---|
+| S0 | CC-P0 v2 (split + push), HB-0 (gateway/registry), HB-1 (frontends) |
+| S1 | HB-2 (verification, budgets, paired baseline) + CC-P1 verifier-contract consumption |
+| S2 | HB-3 (cache affinity, shared memory) |
+| S3 | Calibration + staged cutover (the old "Phase 4") |
+| S4 | HB-4 (learning loop, collapse guards) |
+| S5 | Full implementation (Line P definition of done) |
+
+PLATFORM §9's Phases 7–10 are post-S5 / Line E work. HANDOFF's Phases 0–5 and
+pilot-reconciled §8's Phases 0–5 are historical numbering; where any phase
+number conflicts with an S-stage, the S-stage wins (header rule, this file).
