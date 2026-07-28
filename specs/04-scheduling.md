@@ -1,5 +1,11 @@
 # 04 — Scheduling around rate resets (and multi-surface allocation)
 
+> **STATUS: HISTORICAL (CW02 §2.4, 2026-07-28).** Built on the Max shared-pool
+> premise, which left the production ladder with the subscription cutover;
+> `scripts/scheduler.py` was deleted (git history is the archive). The reset
+> mechanics below are preserved for the Parity Bench subscription-baseline
+> cost accounting, like specs/03.
+
 Scheduling is the mechanism that enacts the three-surface wallet allocation: run
 heavy automated Code off-hours so it never competes with daytime interactive
 Science / Cowork / Code on the shared wallet. Implemented by `scripts/scheduler.py`.

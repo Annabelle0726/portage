@@ -17,7 +17,7 @@ against the products it aims to replace.
 | **`LINE-P-ROADMAP.md`** | The staging plan of record: S0–S5, hardware backbone, the 60–90 day calibration window. Where it differs from older plans, it wins. |
 | **`HANDOFF.md`** | Build instructions: buy-vs-build resolution, phases 0–10 (+6a), acceptance criteria, standing rules. |
 | `PROJECT.md` | Mission and the novelty claim (what is actually new vs. the ecosystem). |
-| **`KICKOFF-PROMPT.md`** | The prompt to paste into Claude Code for a session, and how to scope it. |
+| `KICKOFF-PROMPT.md` | Retired (see its banner) — sessions are scoped by LINE-P-ROADMAP + the CW/CC/HB prompts. |
 | `EDUCLOUD-BRIEF.md` | Positioning brief for EduCloud stakeholders: decentralized AI as public infrastructure, and why education specifically needs it. |
 | `specs/00`–`09` | The reasoning record. Each spec explains *why*, not just what. |
 | `specs/10`, `specs/11` | Scale-1 target architectures: **10** = open-weight-only (end state), **11** = hybrid open-first + PAYG ceiling (current mode). Normative inputs to the revision plan. |
@@ -62,7 +62,6 @@ scripts/
   plan.py        plan-first decomposer, runnable per-subtask checks
   measure.py     report | downscale - quality-gated efficiency metrics
   distill.py     turn verifier logs into training data (self-labeling)
-  scheduler.py   off-hours queue drain
   local-serve.sh keep one local model warm, shared over Tailscale
 herdr-meters/                        Herdr plugin: cross-vendor meter routing
   meters.py      board / picker / dispatch / mark / research / loguse
@@ -72,7 +71,6 @@ herdr-meters/                        Herdr plugin: cross-vendor meter routing
   models.json    the routing target catalog + open-weight allowlist manifest
 .claude/                             native Claude Code: hooks, agents, skills,
                                      tier ladders, source registry
-herdr/lanes.sh                       one pane per meter
 .github/workflows/                   deterministic gate + automated review
 docs/setup-two-lane.md               the original personal two-lane setup guide
 ```
@@ -81,7 +79,7 @@ docs/setup-two-lane.md               the original personal two-lane setup guide
 
 ```sh
 uv sync
-ollama serve && ollama pull qwen2.5-coder:7b && ollama pull qwen2.5-coder:32b
+ollama serve && ollama pull qwen2.5-coder:7b   # interim pin — HB-0 installs the standing three
 litellm --config litellm.config.yaml --port 4000
 herdr plugin link ./herdr-meters && herdr plugin action invoke meters.hybrid.board
 ```

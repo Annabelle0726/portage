@@ -1,5 +1,10 @@
 # Kickoff prompt for Claude Code
 
+> **RETIRED (CW02 §4, 2026-07-28).** LINE-P-ROADMAP.md (S0–S5) governs
+> staging and REVISION-PLAN §9 maps the old phase numbers. Retained for the
+> constraint list until the HB-0/HB-1 prompts land in-repo; do not start
+> sessions from this file.
+
 > **July 2026 update.** `LINE-P-ROADMAP.md` (S0–S5) governs staging; S0 runs
 > on the authored HB-0/HB-1 prompts, which are **not yet in this repo** —
 > land them first. Until they land, this file remains the session brief; its

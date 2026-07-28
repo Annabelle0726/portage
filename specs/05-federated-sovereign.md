@@ -1,6 +1,7 @@
 # 05 — Federated sovereign compute
 
-> **STATUS: reasoning current, implementation superseded.** The custom broker described here was deleted; LiteLLM provides cooldowns, ordered failover and health checks natively. See `litellm.config.yaml` and HANDOFF.md §2. The free-before-allocation policy and the sovereign-but-not-private data rule still stand exactly as written.
+> **STATUS: reasoning current, implementation superseded. Line E content —
+> moves to the EduCloud umbrella at CC-P0 v2 (CW02 §4).** The custom broker described here was deleted; LiteLLM provides cooldowns, ordered failover and health checks natively. See `litellm.config.yaml` and HANDOFF.md §2. The free-before-allocation policy and the sovereign-but-not-private data rule still stand exactly as written.
 
 The EduCloud sovereign tier is a **federation** of institutional/open-weight
 endpoints, not a single Jetstream2 URL. This is the direction the Fable 5

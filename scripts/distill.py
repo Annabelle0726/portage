@@ -6,6 +6,12 @@
 """
 distill — turn the platform's own verifier logs into training data.
 
+STATUS (CW02 §2.4, 2026-07-28): PARKED until HB-4 / S4. This exists ahead of
+its phase — the herdr-build-plan lists distill.py as unwritten; it is written,
+but it must gain the collapse guards (class-weighted labels, exploration
+fraction, per-tier recall + CNA tracking) before any training run consumes
+its output.
+
 The key property (specs/09 §4): this platform LABELS ITSELF. No hand annotation.
 
   routing (R2)   the CHEAPEST TIER THAT PASSED is the correct route, by

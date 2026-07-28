@@ -4,6 +4,7 @@
 > `../educloud/WHITEPAPER.md` and `../educloud/SYSTEM.md` (settled names;
 > four AI consumers on Line E, including Outfitter's allocation planner).
 > This brief predates those documents and keeps its original text.
+> Destination: moves to the EduCloud umbrella at CC-P0 v2 (CW02 §4).
 
 *A positioning and design brief to carry into the EduCloud project. Audience:
 EduCloud collaborators and institutional stakeholders, not just engineers.*

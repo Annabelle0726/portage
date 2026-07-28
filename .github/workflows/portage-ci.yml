@@ -1,9 +1,7 @@
-name: taskcapture-ci
+name: portage-ci
 
-# Lane B. Everything here is non-interactive Claude Code usage, which since
-# 2026-06-15 draws the separate monthly credit (then API rates) on Max plans —
-# NOT your interactive 5h/weekly pool. So the reviewer never competes with your
-# hands-on-keyboard work.
+# Lane B. Non-interactive CI. The deterministic gate spends no model tokens at
+# all; the reviewer job runs off the interactive session entirely.
 
 on:
   pull_request:
