@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/EduCloud-Ecosystem/portage/schema/registry.schema.json",
+  "title": "Portage deployment registry",
+  "description": "One entry per LiteLLM deployment. src/portage/render_config.py validates portage-local/registry.yaml (or config/profiles/*.example.registry.yaml) against this schema before rendering. See HB-0-gateway-foundation.md Step 1.",
+  "type": "object",
+  "required": ["models"],
+  "additionalProperties": false,
+  "properties": {
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/model_entry" }
+    }
+  },
+  "definitions": {
+    "model_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias", "provider_route", "model_id", "open_weight", "license",
+        "max_context", "supports_tools", "supports_json",
+        "data_classification", "enabled"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "description": "One of the seven fixed capability aliases (HB-0 'Fixed decisions'). No others are valid — the ladder is closed by design.",
+          "enum": [
+            "classifier", "code_small", "code_large", "research_synthesis",
+            "embedding", "proprietary_code", "proprietary_research"
+          ]
+        },
+        "provider_route": {
+          "type": "string",
+          "description": "The LiteLLM provider prefix this entry renders under (e.g. 'ollama_chat/<model_id>'). 'ollama_chat', never 'ollama' — HB-0 fixed decision.",
+          "enum": ["ollama_chat", "openrouter", "anthropic", "perplexity", "openai"]
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The model identifier without the provider prefix, e.g. 'qwen3-coder:7b' or 'z-ai/glm-5.2'."
+        },
+        "endpoint": {
+          "type": ["string", "null"],
+          "description": "Required for provider_route: ollama_chat. An os.environ/ reference to a Tailscale hostname (never a literal hostname or IP, never a secret value) so the registry stays portable across machines. Enforced in render_config.py, not pure JSON Schema, since it's conditional on provider_route."
+        },
+        "order": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Failover order within this alias's deployment group. Required when an alias has more than one enabled entry (checked in render_config.py, since JSON Schema can't see sibling array items)."
+        },
+        "open_weight": { "type": "boolean" },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The model's license class (e.g. 'Apache-2.0', 'MIT'). Use the literal string 'UNVERIFIED' when the license hasn't been confirmed yet — never guess a specific license name, since this field feeds the open-weight allowlist check (specs/09 R2)."
+        },
+        "max_context": { "type": "integer", "minimum": 1 },
+        "supports_tools": { "type": "boolean" },
+        "supports_json": { "type": "boolean" },
+        "thinking_disabled_for_structured": {
+          "type": "boolean",
+          "description": "Optional. True when this deployment must have thinking/reasoning turned off for structured/JSON/tool calls (e.g. Gemma 4 E4B per HB-0 Step 1). Absent means not applicable."
+        },
+        "stream_tools": {
+          "type": "boolean",
+          "description": "Optional. Set to false by HB-0 Step 4 (tests/test_toolcalls.py) if this deployment's tool calls work non-streaming but fail to reconstruct correctly under stream: true. Absent means untested or known-good under both."
+        },
+        "data_classification": {
+          "type": "string",
+          "description": "CW02-decisions.md D15's enum. Full enforcement is HB-2 scope; the field exists at HB-0 so the registry doesn't need a breaking schema change later.",
+          "enum": ["public", "personal_sensitive", "regulated"]
+        },
+        "benchmark_version": {
+          "type": ["string", "null"],
+          "description": "Which BFCLv3/IFEval run this row's numbers came from, e.g. a dated harness run or a cited public leaderboard snapshot. Null when bfclv3/ifeval are both null."
+        },
+        "bfclv3": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Berkeley Function-Calling Leaderboard v3 score. Selection rule (HB-0 Step 1): any sub-4B model doing tool/function calls needs ~50+ here. Null means not yet measured — never fabricate a number."
+        },
+        "ifeval": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "IFEval instruction-following score. Null means not yet measured."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "false entries are validated and kept in the registry but excluded from the rendered model_list (HB-0: proprietary_code/proprietary_research exist disabled so HB-2's rescue path flips a flag instead of adding config)."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "provider_route": { "const": "ollama_chat" } } },
+          "then": { "required": ["endpoint"] }
+        }
+      ]
+    }
+  }
+}

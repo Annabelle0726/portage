@@ -9,6 +9,10 @@ license = {text = "Apache-2.0"}
 [project.optional-dependencies]
 # Installed only where actually needed, so the core stays dependency-free.
 proxy = ["litellm[proxy]"]
+# render_config.py / validate_env.py (HB-0): registry -> LiteLLM config
+# rendering needs YAML + JSON Schema. Neither failup.py, plan.py, measure.py
+# nor distill.py depend on this — the stdlib-only core is untouched.
+config = ["pyyaml", "jsonschema"]
 
 [dependency-groups]
 # uv-native (PEP 735) dependency GROUPS, not extras: `uv run`/`uv sync` include
@@ -16,7 +20,10 @@ proxy = ["litellm[proxy]"]
 # `uv run pytest -q` with no prior sync fails to find pytest at all when it
 # lives under [project.optional-dependencies] instead — the milestone-gate CI
 # job never passes `--extra dev`, so that placement was silently broken.
-dev = ["pytest", "ruff"]
+# pyyaml/jsonschema are duplicated here (not just in the `config` extra) so
+# that same bare `uv run pytest -q` also covers tests/test_render_config.py
+# without a separate --extra flag in CI.
+dev = ["pytest", "ruff", "pyyaml", "jsonschema"]
 
 [tool.ruff]
 line-length = 90

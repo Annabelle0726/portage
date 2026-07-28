@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# compose.example.yaml — sanitized template of the LiteLLM+Postgres deployment
+# contract (HB-0 Step 2). This is what Waypoint consumes at Scale 2 and what a
+# Coolify-style deploy target expects: single-purpose, env-driven, digest-pinned.
+# portage-local carries the real, machine-specific docker-compose.yaml built
+# from this shape — see docs/BUILD-PLAN.md and KNOWN_GOOD_VERSIONS.md there for
+# the exact digest currently running.
+#
+#   docker compose -f compose.example.yaml up -d
+#
+# Required env (see .env.example in portage-local): LITELLM_MASTER_KEY,
+# POSTGRES_PASSWORD, DATABASE_URL, ANTHROPIC_API_KEY, OPENROUTER_API_KEY,
+# PERPLEXITYAI_API_KEY, SOVEREIGN_BASE_URL, SOVEREIGN_TOKEN, and one
+# EXAMPLE_NODE_*_HOST per local Ollama endpoint in the registry.
+
+services:
+  litellm:
+    # Pin by digest, not just tag — KNOWN_GOOD_VERSIONS.md records the exact
+    # digest that passed Gates 1-4. Replace the tag below with
+    # `ghcr.io/berriai/litellm@sha256:<digest>` once pinned.
+    image: ghcr.io/berriai/litellm:main-stable
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      # The rendered config is a build artifact (gitignored) — mount it
+      # read-only. Never hand-edit it; re-run render_config.py instead.
+      - ../litellm/config.yaml:/app/config.yaml:ro
+      - ../litellm/model_list.generated.yaml:/app/model_list.generated.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      PERPLEXITYAI_API_KEY: ${PERPLEXITYAI_API_KEY}
+      SOVEREIGN_BASE_URL: ${SOVEREIGN_BASE_URL}
+      SOVEREIGN_TOKEN: ${SOVEREIGN_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - portage_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # No Redis (HB-0 fixed decision: single proxy instance at Scale 1).
+
+volumes:
+  portage_postgres_data:

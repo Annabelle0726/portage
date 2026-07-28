@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# scale1.example.settings.yaml — the router/litellm/general settings block for
+# the sanitized example config. Copied verbatim into the rendered
+# scale1.example.yaml by src/portage/render_config.py, alongside the
+# `include:` line pointing at the rendered model list. portage-local's real
+# deployment carries its own (private, machine-specific) litellm_settings.yaml
+# with the same shape.
+
+router_settings:
+  routing_strategy: simple-shuffle    # `order` governs; shuffle only breaks ties
+  num_retries: 2
+  allowed_fails: 1
+  cooldown_time: 300                  # a transient failure sidelines one deployment, not the run
+  enable_pre_call_checks: true
+
+litellm_settings:
+  drop_params: true                   # tolerate provider param mismatches
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  background_health_checks: true      # VERIFIED (KNOWN_GOOD_VERSIONS.md): lives under
+  health_check_interval: 300          # general_settings, not router_settings, on v1.93.x
+  database_url: os.environ/DATABASE_URL   # STORE_MODEL_IN_DB — keys, budgets, spend persist

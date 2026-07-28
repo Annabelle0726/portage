@@ -17,6 +17,16 @@ jobs:
         uses: astral-sh/setup-uv@v5
       - name: Run test suite (Milestone gate)
         run: uv run pytest -q
+      - name: Re-render check (HB-0) — registry/settings must match the committed example
+        run: >
+          uv run --extra config python src/portage/render_config.py
+          --registry config/profiles/scale1.example.registry.yaml
+          --settings config/profiles/scale1.example.settings.yaml
+          --schema schema/registry.schema.json
+          --out-dir config/profiles
+          --config-name scale1.example.yaml
+          --model-list-name scale1.example.model_list.yaml
+          --check
 
   # ---- Automated review: only runs if the gate is green. ----
   review:

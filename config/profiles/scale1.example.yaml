@@ -1,147 +1,19 @@
-# SPDX-License-Identifier: Apache-2.0
-#
-# Portage — Scale 1 example profile. This is the published, reviewable
-# template: no hostnames, no keys, no personal choices. It is the exact shape
-# of the live Scale-1 deployment (see `~/dev/portage-local`, private), with
-# every `os.environ/` and `http://localhost:...` reference already generic —
-# the live config differs from this file only in which real endpoints and
-# keys those references resolve to at runtime, never in structure. The Scale-2
-# config diff (CC-P0 v2, MANIFEST §"Actions" item 4) is reviewed against this
-# file, not against the private deployment repo, so any structural drift
-# between "Scale 1 as published" and "Scale 1 as actually run" shows up here
-# first.
-#
-#   litellm --config config/profiles/scale1.example.yaml --port 4000
-#
-# Two different jobs share these deployments, so each is registered TWICE
-# under different model_names, on purpose:
-#
-#   RUNGS  (local-small, local-big, sovereign-work, sonnet, opus) are
-#           individually addressable. The fail-up guard's tiers files name a
-#           rung directly — that's CAPABILITY escalation: the guard picked a
-#           specific point on the ladder and must reach exactly that
-#           deployment, not whichever one happens to be up.
-#   GROUPS (work, judgment) are ordered-failover pools over the SAME
-#           deployments. `order` encodes the platform's core policy: free
-#           before metered, scarce last. That's AVAILABILITY failover: reach
-#           the best deployment that is actually up.
-#
-# Rungs carry no `order` (address one specific deployment, no fallback-among-
-# peers by definition); groups do. Escalation is open-to-open first; the
-# frontier deployment is last by design.
-
-model_list:
-  # ---- capability rungs: named individually for the fail-up ladder ----------
-  - model_name: local-small
-    litellm_params:
-      model: ollama_chat/LOCAL_SMALL_MODEL_ID   # e.g. an open 7B-class coder
-      api_base: http://LOCAL_NODE_A:11434
-    model_info: {portage_tier: local, cost_class: free}
-
-  - model_name: local-big
-    litellm_params:
-      model: ollama_chat/LOCAL_BIG_MODEL_ID     # e.g. an open 32B-class coder
-      api_base: http://LOCAL_NODE_A:11434       # or a second warm node
-    model_info: {portage_tier: local, cost_class: free}
-
-  - model_name: sovereign-work
-    litellm_params:
-      model: openai/SOVEREIGN_MODEL_ID          # OpenAI-compatible HPC endpoint
-      api_base: os.environ/SOVEREIGN_BASE_URL   # Jetstream2 / campus HPC / vLLM
-      api_key: os.environ/SOVEREIGN_TOKEN
-    model_info: {portage_tier: sovereign, cost_class: free}
-
-  - model_name: sonnet
-    litellm_params:
-      model: anthropic/claude-sonnet-5
-      api_key: os.environ/ANTHROPIC_API_KEY
-    model_info: {portage_tier: frontier, cost_class: metered}
-
-  - model_name: opus
-    litellm_params:
-      model: anthropic/claude-opus-4-8
-      api_key: os.environ/ANTHROPIC_API_KEY
-    model_info: {portage_tier: frontier, cost_class: metered, scarce: true}
-
-  # ---- work: availability-failover pool over the local/sovereign/frontier
-  # rungs above, PLUS a cheap open-weight API tier that is deliberately NOT a
-  # named rung — no tiers.*.json ladder addresses it individually; it exists
-  # only as a cost fallback within this group. ------------------------------
-  - model_name: work
-    litellm_params:
-      model: ollama_chat/LOCAL_BIG_MODEL_ID
-      api_base: http://LOCAL_NODE_A:11434
-      order: 1                                # free, private, always first
-    model_info: {portage_tier: local, cost_class: free}
-
-  - model_name: work
-    litellm_params:
-      model: openai/SOVEREIGN_MODEL_ID
-      api_base: os.environ/SOVEREIGN_BASE_URL
-      api_key: os.environ/SOVEREIGN_TOKEN
-      order: 2                                # sovereign, zero marginal cost
-    model_info: {portage_tier: sovereign, cost_class: free}
-
-  - model_name: work
-    litellm_params:
-      model: openrouter/OPEN_WEIGHT_MODEL_ID
-      api_key: os.environ/OPENROUTER_API_KEY
-      order: 3                                # cheap open-weight API
-    model_info: {portage_tier: open_api, cost_class: metered}
-
-  - model_name: work
-    litellm_params:
-      model: anthropic/claude-sonnet-5
-      api_key: os.environ/ANTHROPIC_API_KEY
-      order: 4                                # frontier: hybrid mode only
-    model_info: {portage_tier: frontier, cost_class: metered}
-
-  # ---- judgment: planning, review, milestone gates -------------------------
-  # Deliberately NOT a cheap-first ladder. A bad plan poisons every stage
-  # under it, so this group starts at the ceiling.
-  - model_name: judgment
-    litellm_params:
-      model: anthropic/claude-opus-4-8
-      api_key: os.environ/ANTHROPIC_API_KEY
-      order: 1
-    model_info: {portage_tier: frontier, cost_class: metered, scarce: true}
-
-  - model_name: judgment
-    litellm_params:
-      model: openai/SOVEREIGN_MODEL_ID
-      api_base: os.environ/SOVEREIGN_BASE_URL
-      api_key: os.environ/SOVEREIGN_TOKEN
-      order: 2                                # open fallback for full-open mode
-    model_info: {portage_tier: sovereign, cost_class: free}
-
-  # ---- steward: triage, classify, route, adapt, propose checks -------------
-  # Always local. Free, private, warm. Never routed off-machine.
-  - model_name: steward
-    litellm_params:
-      model: ollama_chat/LOCAL_SMALL_MODEL_ID
-      api_base: http://LOCAL_NODE_A:11434
-    model_info: {portage_tier: local, cost_class: free}
+# GENERATED by src/portage/render_config.py from registry.yaml — do not
+# hand-edit. Re-run the renderer to apply a registry change. A CI check
+# re-renders and diffs this file against its source on every PR.
 
 router_settings:
-  routing_strategy: simple-shuffle    # `order` governs; shuffle breaks ties
+  routing_strategy: simple-shuffle
   num_retries: 2
   allowed_fails: 1
-  cooldown_time: 300                  # a 429 sidelines a deployment, not the run
+  cooldown_time: 300
   enable_pre_call_checks: true
-  fallbacks:
-    - {work: [judgment]}              # exhausted the work ladder -> judgment
-
 litellm_settings:
-  drop_params: true                   # tolerate provider param mismatches
-  # Langfuse callbacks are a later-phase addition (see docs/PROJECT.md's
-  # parked-work list). Enabling them before an outcome store exists makes the
-  # proxy fail on every request, so they stay commented until then.
-  # success_callback: ["langfuse"]
-  # failure_callback: ["langfuse"]
-
+  drop_params: true
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  # Health checks surface a dead HPC endpoint before a task discovers it.
   background_health_checks: true
   health_check_interval: 300
-  # database_url: os.environ/DATABASE_URL  # Postgres outcome store — parked
+  database_url: os.environ/DATABASE_URL
+include:
+- scale1.example.model_list.yaml
