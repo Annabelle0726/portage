@@ -1,5 +1,11 @@
 # Two-lane Claude Code build (Max-quota aware, local floor, verified escalation)
 
+> **STATUS: HISTORICAL (2026-07).** This is the original Max-era two-lane
+> setup. The Max premise and claude-code-router are both retired — CCR was
+> deleted in Phase 2 (docs/phase-1-findings.md) and the staging plan of record
+> is LINE-P-ROADMAP.md (S0–S5). Retained for the hooks design and the
+> reasoning record; the diagrams below show the retired CCR wiring.
+
 Efficient, high-quality runs that leverage Claude while preventing self-inflicted
 rate-limit problems — and escalating flawlessly to Opus for hard tasks. The whole
 design turns on one fact: **on Max, cheaper models save quota, not dollars, and

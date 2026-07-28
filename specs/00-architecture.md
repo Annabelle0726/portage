@@ -15,8 +15,9 @@ only on work that needs it, keep automation off it, and never fumble a hard task
 
 **Two lanes, split by billing bucket.** Interactive work (Lane A) stays on the
 Max subscription with native Claude Code — a router there only adds cost.
-Automation (Lane B) runs through claude-code-router, which since 2026-06-15 draws
-the separate non-interactive credit, not the interactive pool.
+Automation (Lane B) originally ran through claude-code-router; Phase 1 proved
+Claude Code reaches LiteLLM's /v1/messages directly and Phase 2 deleted the
+shim (docs/phase-1-findings.md). Lane B now targets the LiteLLM gateway.
 
 **Three execution tiers + a local floor.** T0 background/classifier → a warm
 local model (free, private, off every meter). T1 execution → Sonnet 5. T2

@@ -16,10 +16,11 @@ guidance lives in skills (`.claude/skills/`), not here.
   routine execution.
 
 ## Lanes
-- This interactive session is Lane A: native Claude Code on Max. Do not invoke
-  claude-code-router here.
-- Automation (CI, scheduled, batch) is Lane B and runs through CCR off the
-  interactive pool. Don't start Lane B work from an interactive session.
+- This interactive session is Lane A: native Claude Code. claude-code-router
+  was deleted in Phase 2 — Claude Code reaches LiteLLM directly.
+- Automation (CI, scheduled, batch) is Lane B and runs through the LiteLLM
+  gateway, off the interactive session. Don't start Lane B work from an
+  interactive session.
 
 ## Large tasks
 - If a task spans multiple files/stages or needs sequencing, use the
