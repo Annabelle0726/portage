@@ -1,7 +1,0 @@
-{
-  "_comment": "DEPRECATED (2026-07, `docs/specs/11`/`REVISION-PLAN.md`): the Claude Max subscription pilot is exiting the production ladder — retire this tiers file in Phase A, keeping a copy only if Lane A native fallback is repointed at LiteLLM aliases. Original note follows. Native `claude -p` (Claude-5x Max-wallet pilot) — no LiteLLM gateway, no env vars needed. 'sonnet'/'opus' are Claude Code's own model aliases (verified 2.1.207), spelled identically to the LiteLLM rungs of the same name on purpose: same string, different transport, so a runner override never has to rewrite tier names.",
-  "tiers": [
-    "sonnet",
-    {"model": "opus", "effort": "high"}
-  ]
-}
