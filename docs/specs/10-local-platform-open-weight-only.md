@@ -283,7 +283,7 @@ embedding
 
 Herdr then maps each capability to the currently best validated model.
 Five open aliases here; `proprietary_code` / `proprietary_research` exist only
-in hybrid mode (specs/11). `code_medium`, `vision`, `reranker` earn cells when
+in hybrid mode (docs/specs/11). `code_medium`, `vision`, `reranker` earn cells when
 telemetry shows a routing decision that needs them (scale-mapping §4.3).
 
 Candidate families should be selected from current downloadable open-weight models such as:

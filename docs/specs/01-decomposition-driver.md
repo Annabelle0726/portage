@@ -1,7 +1,7 @@
 # 01 — Decomposition driver
 
 Turns a large multistage task into an ordered, verified execution **without**
-fan-out. Implemented by `scripts/plan.py`.
+fan-out. Implemented by `src/portage/plan.py`.
 
 ## Principle
 

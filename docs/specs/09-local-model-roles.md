@@ -38,7 +38,7 @@ known conventions.
 rewriting. The distinction is the whole safety argument — a small model
 reinterpreting your intent is worse than no adaptation. So:
 
-- Templates live in `herdr-meters/prompts/`, keyed
+- Templates live in `plugins/herdr-meters/prompts/`, keyed
   `{lane}.{model_class}.md` (e.g. `code.open.md`, `code.remote-open.md`,
   `code.frontier.md`, `science.any.md`). Selection is a **deterministic dict
   lookup**, no inference. `remote-open` (hosted open-weight) gets more explicit
@@ -80,7 +80,7 @@ what's already built for R1–R2 and what §3 adds for R3.
 | R1 triage | clarify events + one-shot rate | tasks that needed clarification vs. those that one-shot |
 | R3 adaptation | `template_id` × verified outcome | which template wins per (lane, target) |
 
-No hand-labeling. `scripts/distill.py` turns these logs into SFT/preference
+No hand-labeling. `src/portage/distill.py` turns these logs into SFT/preference
 datasets.
 
 **Stage C — Specialize (when the log earns it).** At roughly a few hundred

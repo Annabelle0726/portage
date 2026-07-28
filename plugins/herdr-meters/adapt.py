@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only
 """
-adapt — target-conditioned prompt adaptation (role R3, specs/09).
+adapt — target-conditioned prompt adaptation (role R3, docs/specs/09).
 
 Runs AFTER routing, BEFORE dispatch. Once the target is known (model class +
 lane), the prompt is adapted to that target's conventions.
@@ -34,7 +35,7 @@ PROMPTS = ROOT / "prompts"
 CATALOG = json.loads((ROOT / "models.json").read_text())["targets"]
 EXTRACTOR = os.environ.get("METERS_CLASSIFIER", "qwen2.5-coder:7b")
 
-# Coarse buckets on purpose (specs/09 §6): per-model templates would proliferate
+# Coarse buckets on purpose (docs/specs/09 §6): per-model templates would proliferate
 # faster than they could be maintained or measured.
 #
 # The bucket is keyed on MODEL FAMILY, not on the routing `ceiling` field. The

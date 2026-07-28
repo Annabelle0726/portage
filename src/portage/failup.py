@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# SPDX-License-Identifier: AGPL-3.0-only
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -166,7 +167,7 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
         with log.open("a") as f:
             f.write(json.dumps({
                 "ts": datetime.now(UTC).isoformat(), "run_id": run_id,
-                "task": task,                # needed for distillation (specs/09)
+                "task": task,                # needed for distillation (docs/specs/09)
                 "tier": tier, "model": model, "effort": effort,
                 "ok": ok, "reason": reason, "category": category,
                 "seconds": round(time.time() - t0, 1),

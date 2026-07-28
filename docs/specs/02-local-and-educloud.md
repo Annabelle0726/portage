@@ -1,7 +1,7 @@
 # 02 — Local & EduCloud versions
 
 > **Updated 2026-07 (Scale-1 transition).** The ladders below are restated in the
-> unified vocabulary of `specs/10`–`11` and `REVISION-PLAN.md`: rungs are
+> unified vocabulary of `docs/specs/10`–`11` and `REVISION-PLAN.md`: rungs are
 > `local_fast → [local_large] → remote_open_fast (Groq) → remote_open_broad
 > (OpenRouter) → [remote_open_direct] → proprietary` — dormant slots
 > bracketed; sovereign is an EduCloud-profile insert (CW02-decisions.md §3), and the version you run is a
@@ -51,13 +51,13 @@ counted as a model failure.
   tokens are wasted motion — raise its floor model or promote `default` a rung.
 - Keep weights on the internal SSD and warm (`OLLAMA_KEEP_ALIVE=-1`); serve over
   Tailscale so the MacBook and any VM share one resident model
-  (`scripts/local-serve.sh`).
+  (`src/portage/local-serve.sh`).
 - The `remote_open` allowlist is enforced by config (a non-allowlisted model
   isn't a deployment); quantization floor + license live in `models.json`.
 
 This version runs fully offline for anything the local tiers can handle; the
 hosted-open and PAYG rungs need network + keys but are never on the critical path
-for local-solvable work. The end state (`open_weight_only`, `specs/10`) is this
+for local-solvable work. The end state (`open_weight_only`, `docs/specs/10`) is this
 same ladder with the `proprietary_payg` rung removed — a config-variant swap,
 triggered by `proprietary_displacement`.
 
@@ -142,6 +142,6 @@ matching tiers file:
 | EduCloud / clinical `sovereign` | `litellm.sensitive.yaml` | `.claude/tiers.local.json` |
 
 Lane A (interactive) is unchanged in all — native Claude Code during the pilot,
-retiring as the subscription baseline is measured out (`specs/03`). These
+retiring as the subscription baseline is measured out (`docs/specs/03`). These
 versions shape **Lane B** (automation), which is where the tiering and the
 free/sovereign compute actually pay off.

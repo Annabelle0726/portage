@@ -11,7 +11,7 @@ friction stops being "which model is smartest" and becomes "which meter has
 headroom, and did I specify this well enough to not waste a turn."
 
 **The core mechanisms** (each is the minimum custom code needed, everything else
-is configuration of existing tools — see `HANDOFF.md` §2 for the full
+is configuration of existing tools — see `docs/BUILD-PLAN.md` §2 for the full
 buy-vs-build resolution):
 
 1. **Tiered routing, free-before-metered, scarce-last.** Local open-weight →
@@ -44,8 +44,8 @@ campus HPC) as a sovereign, zero-marginal-cost tier. That fusion, plus the
 runnable-acceptance-check governance and the honest measurement layer, is the
 candidate novelty. It's a mid-2026 snapshot and time-sensitive — see `PROJECT.md`.
 
-**Where it stands:** fully specified (`specs/00`–`06`), drafted in Python, and
-just handed to Claude Code to build for real (`HANDOFF.md`) — with an explicit
+**Where it stands:** fully specified (`docs/specs/00`–`06`), drafted in Python, and
+just handed to Claude Code to build for real (`docs/BUILD-PLAN.md`) — with an explicit
 instruction to replace hand-rolled pieces with existing tools wherever possible
 (LiteLLM instead of a custom broker, for instance, was one correction already
 made). This document exists to push that "don't rebuild what exists" instinct

@@ -6,7 +6,7 @@ against the subscription products it replaces (Claude, ChatGPT/Codex,
 Perplexity). This document is the capstone: it synthesizes the landscape survey
 (`routing-layer-landscape-2026.md` — an external uploaded document, not in this
 repo), the platform overview received from
-Perplexity, and everything in `specs/00–09`, and it supersedes them where they
+Perplexity, and everything in `docs/specs/00–09`, and it supersedes them where they
 conflict. The name is settled: **Portage** (EduCloud umbrella `SYSTEM.md` §1;
 prior working name Commons). The ethos it carries is public-infrastructure
 Open Access.
@@ -33,8 +33,8 @@ Open Access.
   (deterministic pins first, local model second, uncertainty escalates upward)
   is reinstated as a mandatory stage between policy and router.
 - It has no **plan-first decomposition with runnable per-subtask acceptance
-  checks** and no human plan gate. Reinstated (specs/01; OpenSpec schema per
-  specs/08).
+  checks** and no human plan gate. Reinstated (docs/specs/01; OpenSpec schema per
+  docs/specs/08).
 - It logs "ceiling-stall" but lacks the **honesty gate** — the rule that an
   efficiency win is void if the stall rate rose. Reinstated as a platform-wide
   invariant, and generalized in the benchmark suite (§5) as non-inferiority.
@@ -49,7 +49,7 @@ The off-hours scheduler was retired with the subscription premise (CW02 §2.4).
 
 **Naming (2026-07-28, CW02):** *Herdr* names the policy brain — classify,
 adapt, budget, capability selection, verification state — sitting above LiteLLM
-(transport spine) per the Scale-1 pilot hierarchy. `herdr-meters/` is its seed
+(transport spine) per the Scale-1 pilot hierarchy. `plugins/herdr-meters/` is its seed
 implementation; the terminal multiplexer is one surface it drives. LiteLLM
 never owns policy; Herdr never owns provider-infrastructure routing.
 
@@ -94,7 +94,7 @@ never owns policy; Herdr never owns provider-infrastructure routing.
 Escalation policy: **open-to-open first** (T1→[T2]→T3→T4→[T5]) before any
 open-to-closed step; T6 exists only in `hybrid` mode and is boundary-gated, never
 reached just because it would perform better. Full ladder, mode table, and the
-transition plan are in `REVISION-PLAN.md` and `specs/10`–`11`.
+transition plan are in `REVISION-PLAN.md` and `docs/specs/10`–`11`.
 
 ## 3. Modes
 
@@ -107,8 +107,8 @@ transition plan are in `REVISION-PLAN.md` and `specs/10`–`11`.
 `sovereign` is stricter than `open_weight_only`: it excludes hosted-open
 infrastructure too, not just proprietary weights. Sensitive workspaces remain a
 *config variant with tiers absent*, never a runtime check. Mode is switched by
-swapping the LiteLLM config variant — no code change (`specs/10` §"target
-state"; `specs/11` Phase C). The flip from `hybrid` to `open_weight_only` is
+swapping the LiteLLM config variant — no code change (`docs/specs/10` §"target
+state"; `docs/specs/11` Phase C). The flip from `hybrid` to `open_weight_only` is
 triggered by the `proprietary_displacement` metric (§5.3), not by calendar or
 preference.
 
@@ -227,7 +227,7 @@ requests per model); long-term, periodic RouteLLM-style retraining on the
 Postgres log. **Availability events are excluded from this signal** — a rung
 being asleep or off-network (`unavailable`) is capacity noise, not a quality
 verdict, and must not poison priors or retraining data the way a real
-`model_failed` should (see `specs/10`/`11`, `failup.py`). The benchmark suite
+`model_failed` should (see `docs/specs/10`/`11`, `failup.py`). The benchmark suite
 doubles as the evaluation set for router retraining — the platform literally
 learns from the comparison against its competitors. Routing changes are
 versioned; a retrained router must beat the prior router on the held-out suite
@@ -251,7 +251,7 @@ before deployment (same non-inferiority gate).
    product-surface analogue without cloning vendor features.
 8. A working name, a license decision to make (recommend Apache-2.0 to match
    the stack), and this document as the single source of truth.
-9. **The steward model** (`specs/09`): one warm local model doing all five
+9. **The steward model** (`docs/specs/09`): one warm local model doing all five
    pre-dispatch jobs — triage, classify, route, shape, propose acceptance
    checks — prompted+rules now, verifier-fine-tuned later. Prompt shaping is
    additive-only with the original always preserved, so it is measurable
@@ -279,7 +279,7 @@ before deployment (same non-inferiority gate).
   every benchmark report carries a date and exact versions, and comparisons
   expire.
 
-## 9. Build-order delta (appends to HANDOFF.md)
+## 9. Build-order delta (appends to docs/BUILD-PLAN.md)
 
 **Phase 6a** (new, inserted before Phase 6 — see `REVISION-PLAN.md` §5): wire
 OpenRouter (allowlisted) + Together as LiteLLM deployment groups; wire T7

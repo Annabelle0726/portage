@@ -11,7 +11,7 @@ Follow this; do not fan out.
 ## Steps
 
 1. **Plan.** Produce a structured plan with Opus (the `planner` subagent, or
-   `scripts/plan.py plan --task "<task>"`). The plan lists ordered subtasks with
+   `src/portage/plan.py plan --task "<task>"`). The plan lists ordered subtasks with
    dependencies, files touched, an acceptance check each, an integration check,
    and the risky seams. It is saved to `.claude/state/plans/`.
 
@@ -19,7 +19,7 @@ Follow this; do not fan out.
    decision — real review, because nothing unit-tests a plan. Do not proceed
    without approval. A re-plan needs re-approval.
 
-3. **Execute.** Run the approved plan (`scripts/plan.py run --plan <file>`).
+3. **Execute.** Run the approved plan (`src/portage/plan.py run --plan <file>`).
    Each subtask runs in dependency order as a normal guarded task under
    `failup.py`, so a stage harder than planned self-corrects upward. Sequential
    by default; parallelize only stages marked `parallelizable` and file-disjoint,

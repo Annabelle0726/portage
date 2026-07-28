@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# SPDX-License-Identifier: AGPL-3.0-only
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -119,7 +120,7 @@ def do_plan(task: str, project: str) -> None:
     print(f"[plan] saved {out.relative_to(project)}\n")
     print(json.dumps(plan, indent=2))
     print("\n[plan] REVIEW this plan. To execute an approved plan:\n"
-          f"    scripts/plan.py run --plan {out.relative_to(project)}")
+          f"    src/portage/plan.py run --plan {out.relative_to(project)}")
 
 
 def toposort(subtasks: list[dict]) -> list[dict]:

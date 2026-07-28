@@ -3,7 +3,7 @@ name = "portage-control-plane"
 version = "0.1.0"
 description = "Quota- and sovereignty-aware agent control plane: verifier-driven routing across local, sovereign, and subscription meters."
 requires-python = ">=3.11"
-dependencies = []          # stdlib only by design; see HANDOFF.md
+dependencies = []          # stdlib only by design; see docs/BUILD-PLAN.md
 license = {text = "Apache-2.0"}
 
 [project.optional-dependencies]

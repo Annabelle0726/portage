@@ -1,8 +1,8 @@
 # 06 — Unified interface for the personal hybrid
 
-> **STATUS: partly superseded.** The standalone `scripts/ai` dispatcher was removed in favour of the `herdr-meters` plugin, which does the same job inside the multiplexer. The access-constraint analysis (what is CLI-able vs app-only, and why Sonar API != Perplexity Pro) remains accurate and load-bearing.
+> **STATUS: partly superseded.** The standalone `src/portage/ai` dispatcher was removed in favour of the `herdr-meters` plugin, which does the same job inside the multiplexer. The access-constraint analysis (what is CLI-able vs app-only, and why Sonar API != Perplexity Pro) remains accurate and load-bearing.
 
-One command (`scripts/ai`) over four meters, plus a Herdr surface with one pane per
+One command (`src/portage/ai`) over four meters, plus a Herdr surface with one pane per
 meter. This is the **pilot of the EduCloud full version**: same registry shape,
 same free-before-metered policy, same reserve-the-scarce-tier rule — at personal
 scale, where it's cheap to be wrong.

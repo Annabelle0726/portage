@@ -67,9 +67,9 @@ Phase 2 acted on it:
   explicit `--model`, which is strictly more in keeping with the standing rule
   that milestone-gate criteria are pinned to the frontier model and never
   downshifted — explicit beats inferred.
-- `scripts/plan.py`'s `do_plan` now calls native `claude -p --model
+- `src/portage/plan.py`'s `do_plan` now calls native `claude -p --model
   claude-opus-4-8` instead of `ccr code -p --model anthropic,claude-opus-4-8`.
-- `scripts/local-serve.sh`'s closing message points at
+- `src/portage/local-serve.sh`'s closing message points at
   `litellm.config.yaml`'s local deployment instead of "CCR's local provider".
 - `.claude/tiers.local.json` / `tiers.educloud.json` no longer use CCR's
   `provider,model` comma syntax — see `KNOWN_GOOD_VERSIONS.md` for the rung
@@ -78,7 +78,7 @@ Phase 2 acted on it:
 The one piece of CCR's config that had no direct replacement — routing
 "background"/"quick" vs "think"/"deep" tasks to different models by *task
 shape*, independent of the capability ladder — is not reintroduced. That
-distinction now belongs to `herdr-meters/classify.py`'s triage layer (which
+distinction now belongs to `plugins/herdr-meters/classify.py`'s triage layer (which
 already reasons about task shape) and to the plan/failup split (planning is
 always `judgment`-tier; execution walks the `work` ladder). No functionality is
 missing; it just moved to where the project already made the same decision.
@@ -87,7 +87,7 @@ missing; it just moved to where the project already made the same decision.
 It is not installed on this machine, so nothing about its flags, its
 `config.toml` custom-provider path, or whether it can point at LiteLLM the way
 Claude Code does has been executed. Every Codex-related value in
-`herdr-meters/models.json` stays flagged UNVERIFIED until a machine with Codex
+`plugins/herdr-meters/models.json` stays flagged UNVERIFIED until a machine with Codex
 installed can run the equivalent of this session's Claude Code test.
 
 ---
@@ -178,7 +178,7 @@ So the fail-up ladder would have appeared to escalate effort while doing
 nothing of the kind, and the measurement layer would have attributed the
 resulting outcomes to an effort level that was never applied. Fixed: `null` now
 means "omit the flag", which `failup.py` already handled correctly.
-`herdr-meters/models.json` had the same value; fixed there too.
+`plugins/herdr-meters/models.json` had the same value; fixed there too.
 
 ### 3.4 `--model anthropic,claude-sonnet-5` is rejected
 

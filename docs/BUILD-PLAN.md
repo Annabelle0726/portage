@@ -1,5 +1,9 @@
 # HANDOFF — build instructions for Claude Code
 
+> *(Formerly `HANDOFF.md` at the repo root; relocated here at CC-P0 v2.
+> Prose elsewhere in this repo that says "HANDOFF §N" or "HANDOFF
+> Phase N" means this document.)*
+
 **Read `PLATFORM.md` first** — it is the capstone definition (final open-model
 platform + the comparison suite against Claude/Codex/Perplexity) and supersedes
 this file where they conflict. Its §9 appends Phase 6a + Phases 7–10 to the plan
@@ -12,7 +16,7 @@ little as possible**. The design principle that governs everything: prefer
 configuring an existing tool over writing code, and keep custom code to the thin
 layer that is genuinely novel.
 
-Read `PROJECT.md` (mission + novelty claim) and `specs/00`–`11` for rationale.
+Read `PROJECT.md` (mission + novelty claim) and `docs/specs/00`–`11` for rationale.
 This file is the execution plan and overrides drafts where they conflict.
 
 ---
@@ -42,20 +46,20 @@ ideas, in one line each:
 
 | Drafted in repo | Verdict | Replace with |
 |---|---|---|
-| `scripts/sovereign_broker.py` | **DELETE — fully covered** | **LiteLLM proxy.** One `config.yaml` gives cooldowns (429 → immediate cooldown), ordered failover (`order=1,2,3` = free→allocation→paid), background health checks, retries/backoff, Ollama + Anthropic + OpenAI-compatible endpoints, spend logging. Express free-before-metered as deployment `order`; the sovereign pool is just multiple deployments of the same `model_name`. |
+| `src/portage/sovereign_broker.py` | **DELETE — fully covered** | **LiteLLM proxy.** One `config.yaml` gives cooldowns (429 → immediate cooldown), ordered failover (`order=1,2,3` = free→allocation→paid), background health checks, retries/backoff, Ollama + Anthropic + OpenAI-compatible endpoints, spend logging. Express free-before-metered as deployment `order`; the sovereign pool is just multiple deployments of the same `model_name`. |
 | `.claude-code-router/*` configs | **RESOLVED Phase 1 — deleted.** | Claude Code talks to LiteLLM's Anthropic-compatible `/v1/messages` directly (verified: `docs/phase-1-findings.md`). `.claude-code-router/` and all its configs are gone; the CI review job and `plan.py`'s planner call now use native `claude -p`. Codex's path through LiteLLM remains unverified (Codex CLI not installed) — open question for Phase 3. |
-| OpenRouter hosted-open tier | **CONFIG, not code.** | A LiteLLM deployment group with a hard open-weight allowlist (models not on the list aren't deployments) + provider routing by price/throughput/latency + optional ZDR. Do NOT write a custom aggregator or use an unrestricted auto-router. Allowlist manifest = `herdr-meters/models.json` (license + quant floor per model). |
+| OpenRouter hosted-open tier | **CONFIG, not code.** | A LiteLLM deployment group with a hard open-weight allowlist (models not on the list aren't deployments) + provider routing by price/throughput/latency + optional ZDR. Do NOT write a custom aggregator or use an unrestricted auto-router. Allowlist manifest = `plugins/herdr-meters/models.json` (license + quant floor per model). |
 | Together / DeepInfra direct-open tier | **CONFIG, not code.** | LiteLLM deployments (serverless, OpenAI-compatible). Together primary, DeepInfra optional — redundancy against OpenRouter, and the bench compares aggregation vs direct on the same model. |
 | Open research stack (Science lane) | **DEPLOY, not build.** | **SearXNG** (self-hosted metasearch) + open fetch/crawl behind the citation-resolution verifier (`PLATFORM.md` §7). Required to test against Perplexity and to make the sovereign research path real. |
-| `scripts/scheduler.py` | **SHRINK.** | cron/launchd + a 20-line queue drain. Keep only enqueue/drain; delete the reset-estimate math (it was mostly moot for Lane B — see specs/04). |
-| `scripts/plan.py` decomposition | **KEEP, thin.** | The per-subtask *runnable acceptance check* + human plan gate is the novel bit. Do NOT adopt Spec Kit/BMAD wholesale — they're heavier and lack the runnable-check enforcement. |
-| `scripts/failup.py` | **KEEP.** | This is the contribution's core mechanism. Harden per §4, and add the `unavailable` vs `model_failed` split (Phase 2). |
-| `scripts/measure.py` | **KEEP, but read LiteLLM's spend logs** for token/cost columns instead of duplicating; our custom metrics (win-tier distribution, ceiling-stall rate, `proprietary_displacement`, rescue efficiency, /usage snapshots) stay. |
-| `herdr-meters/` plugin | **KEEP.** | Novel; no existing Herdr plugin does cross-vendor meter routing. Publishes via the `herdr-plugin` GitHub topic. |
-| `herdr-meters/classify.py` | **KEEP.** | Free local triage+routing; deterministic pins + license/allowlist check first. |
+| `src/portage/scheduler.py` | **SHRINK.** | cron/launchd + a 20-line queue drain. Keep only enqueue/drain; delete the reset-estimate math (it was mostly moot for Lane B — see docs/specs/04). |
+| `src/portage/plan.py` decomposition | **KEEP, thin.** | The per-subtask *runnable acceptance check* + human plan gate is the novel bit. Do NOT adopt Spec Kit/BMAD wholesale — they're heavier and lack the runnable-check enforcement. |
+| `src/portage/failup.py` | **KEEP.** | This is the contribution's core mechanism. Harden per §4, and add the `unavailable` vs `model_failed` split (Phase 2). |
+| `src/portage/measure.py` | **KEEP, but read LiteLLM's spend logs** for token/cost columns instead of duplicating; our custom metrics (win-tier distribution, ceiling-stall rate, `proprietary_displacement`, rescue efficiency, /usage snapshots) stay. |
+| `plugins/herdr-meters/` plugin | **KEEP.** | Novel; no existing Herdr plugin does cross-vendor meter routing. Publishes via the `herdr-plugin` GitHub topic. |
+| `plugins/herdr-meters/classify.py` | **KEEP.** | Free local triage+routing; deterministic pins + license/allowlist check first. |
 | Lane A hooks (`.claude/hooks/*`) | **KEEP as-is.** | Already thin uses of native PreCompact/SessionStart. |
 | `.claude/agents/*`, skills, CLAUDE.md | **KEEP as-is.** | Native Claude Code features, already minimal. |
-| `scripts/ai` dispatcher | **DEPRECATE** in favor of the herdr-meters plugin (same function, better surface). Keep only if the user asks for a non-Herdr path. |
+| `src/portage/ai` dispatcher | **DEPRECATE** in favor of the herdr-meters plugin (same function, better surface). Keep only if the user asks for a non-Herdr path. |
 | Local serving (`local-serve.sh`) | **KEEP;** consider MLX later for throughput on Apple Silicon; not required. |
 
 Also reuse, don't rebuild: STREAM's `hpc-as-api`/`streamrelay` for exposing HPC
@@ -91,7 +95,7 @@ same as before; stricter than `open_weight_only`, which still allows hosted-open
 ## 4. Phases, in order, each with acceptance criteria
 
 ### Phase 0 — repo hygiene (small)
-- Restructure into a clean layout (`src/` or keep `scripts/`, your call), add
+- Restructure into a clean layout (`src/` or keep `src/portage/`, your call), add
   `pyproject.toml` (uv-native), ruff config, delete the superseded files per §2.
 - Pin versions: Claude Code CLI, LiteLLM, Herdr min version, model IDs — one
   `KNOWN_GOOD_VERSIONS.md` with rationale.
@@ -132,7 +136,7 @@ same as before; stricter than `open_weight_only`, which still allows hosted-open
   scarce-confirmation and sensitive-pin behavior exactly as drafted.
 - Test `classify.py` against the real local model on ~15 real tasks from the
   user's history; tune keyword rules only where the model misses. Add the
-  license/allowlist check to the deterministic layer (R2, `specs/09`).
+  license/allowlist check to the deterministic layer (R2, `docs/specs/09`).
 - **Accept:** `herdr plugin link` + `board`/`picker`/`dispatch`/`mark` work in
   a live Herdr session; sensitive phrasing never reaches a non-local target
   (add a test asserting the deterministic layer fires before any subprocess).
@@ -181,7 +185,7 @@ same as before; stricter than `open_weight_only`, which still allows hosted-open
   LiteLLM deployments — provisioned/reaped by **Outfitter** in EduCloud. Confirm
   Jetstream2 external-access status first; if still network-gated, document the
   run-on-instance deployment mode. Add the per-lane `policy_mode` posture
-  (`specs/02` §"Per-lane policy modes").
+  (`docs/specs/02` §"Per-lane policy modes").
 - Write the release README positioning the novelty (meter+sovereign fusion,
   runnable-check governance, measurement method incl. displacement) with
   related-work citations (STREAM, llm-router/9router/OmniRoute, CrewAI

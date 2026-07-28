@@ -26,15 +26,15 @@ produce a plan and a small diff, not a large build.
 
 ```
 You are picking up a partly-built project. Read, in this order: README.md,
-PLATFORM.md, REVISION-PLAN.md, then HANDOFF.md. PROJECT.md and specs/00-11 are
+PLATFORM.md, REVISION-PLAN.md, then docs/BUILD-PLAN.md. PROJECT.md and docs/specs/00-11 are
 the reasoning record — consult them when you need to know *why*, don't read them
-all up front. specs/10 (open-weight-only) and specs/11 (hybrid open-first + PAYG)
-are the normative Scale-1 architecture; specs/03 is HISTORICAL (the Claude-only
+all up front. docs/specs/10 (open-weight-only) and docs/specs/11 (hybrid open-first + PAYG)
+are the normative Scale-1 architecture; docs/specs/03 is HISTORICAL (the Claude-only
 pilot), retained only as Parity Bench baseline analysis.
 
 Operating constraints for every session on this repo:
 
-1. BUILD AS LITTLE AS POSSIBLE. HANDOFF.md §2 records which components were
+1. BUILD AS LITTLE AS POSSIBLE. docs/BUILD-PLAN.md §2 records which components were
    deliberately replaced by existing tools (LiteLLM, Herdr's plugin system,
    native Claude Code features). The hosted-open tiers (OpenRouter, Together,
    DeepInfra) and the PAYG ceiling are CONFIG, not code — LiteLLM deployments,
@@ -48,7 +48,7 @@ Operating constraints for every session on this repo:
    When you find a discrepancy, fix the code AND record it in
    KNOWN_GOOD_VERSIONS.md.
 
-3. NEVER REGRESS THE STANDING RULES in HANDOFF.md §6. The load-bearing ones:
+3. NEVER REGRESS THE STANDING RULES in docs/BUILD-PLAN.md §6. The load-bearing ones:
    sensitive data is pinned by config absence (policy_mode: sovereign), never by
    a runtime check, model judgment, or a provider's ZDR/retention promise; the
    verifier decides pass/fail, never the model's self-report; the proprietary
@@ -57,7 +57,7 @@ Operating constraints for every session on this repo:
    fan-out orchestration; every efficiency claim must survive the quality gate
    in measure.py; `unavailable` (a rung offline) is never scored as a failure.
 
-4. WHEN YOU HIT AN OPEN QUESTION (HANDOFF.md §7), stop and investigate rather
+4. WHEN YOU HIT AN OPEN QUESTION (docs/BUILD-PLAN.md §7), stop and investigate rather
    than assuming. Report what you found.
 
 SCOPE FOR THIS SESSION — Phase 6a (Scale-1 transition), plus its two coupled
@@ -86,7 +86,7 @@ Then Phase 6a proper (REVISION-PLAN.md §5):
   2. Wire Anthropic/OpenAI (and Perplexity Sonar for the Science lane) as the
      PAYG ceiling behind LiteLLM budget caps, gated by a per-task-class
      `proprietary_budget` (routine = 0). The allowlist manifest lives in
-     herdr-meters/models.json (license + quantization floor per model).
+     plugins/herdr-meters/models.json (license + quantization floor per model).
   3. Do NOT cancel any subscription yet — the Parity Bench baseline (arm A4,
      native Claude Code on Max) needs it live. Cancellation is a later step,
      recorded as a cost-accounting epoch, only after the 12-task bench cut runs.
@@ -103,7 +103,7 @@ Acceptance for this session:
     docs/phase-6a-findings.md) covering the allowlist-enforcement syntax you
     verified and anything drafted that turned out wrong.
 
-Ask me before: deleting anything outside the superseded list in HANDOFF.md §2,
+Ask me before: deleting anything outside the superseded list in docs/BUILD-PLAN.md §2,
 adding a dependency, cancelling any subscription, or spending real tokens on a
 paid meter (the allowlist-enforcement curl can use a single cheap open-weight
 call — confirm the budget with me first).
@@ -118,5 +118,5 @@ Phase 5 maintenance rails wired into CI → Phase 6 EduCloud generalization
 Phases 7-10 from PLATFORM.md §9 (lane verifiers + open research stack, Postgres/
 Langfuse, bench.py, adaptive router + steward). One phase per session; always
 end with a findings note when the phase involved investigation. The flip from
-`hybrid` to `open_weight_only` (specs/10) is a config-variant swap, triggered by
+`hybrid` to `open_weight_only` (docs/specs/10) is a config-variant swap, triggered by
 the `proprietary_displacement` metric — never by calendar.

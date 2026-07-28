@@ -1,9 +1,0 @@
-{
-  "_comment": "Rungs are LiteLLM model names, not native Claude Code aliases (except sonnet/opus, which are both). Run via `claude -p --model <rung>` with ANTHROPIC_BASE_URL/ANTHROPIC_AUTH_TOKEN pointed at `litellm --config litellm.config.yaml` (KNOWN_GOOD_VERSIONS.md). Local pilot: exhaust local capability before any tier that costs money.",
-  "tiers": [
-    "local-small",
-    "local-big",
-    "sonnet",
-    {"model": "opus", "effort": "high"}
-  ]
-}

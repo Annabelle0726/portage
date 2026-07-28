@@ -2,13 +2,13 @@
 
 > **STATUS: HISTORICAL (CW02 §2.4, 2026-07-28).** Built on the Max shared-pool
 > premise, which left the production ladder with the subscription cutover;
-> `scripts/scheduler.py` was deleted (git history is the archive). The reset
+> `src/portage/scheduler.py` was deleted (git history is the archive). The reset
 > mechanics below are preserved for the Parity Bench subscription-baseline
-> cost accounting, like specs/03.
+> cost accounting, like docs/specs/03.
 
 Scheduling is the mechanism that enacts the three-surface wallet allocation: run
 heavy automated Code off-hours so it never competes with daytime interactive
-Science / Cowork / Code on the shared wallet. Implemented by `scripts/scheduler.py`.
+Science / Cowork / Code on the shared wallet. Implemented by `src/portage/scheduler.py`.
 
 ## The reset mechanics you're scheduling against
 
@@ -46,14 +46,14 @@ timing so you can, and you can pair it with a calendar reminder.
 
 ```
 # queue automated tasks (from anywhere — CI, a commit hook, by hand)
-scripts/scheduler.py enqueue --task "regenerate fixtures and update snapshot tests"
+src/portage/scheduler.py enqueue --task "regenerate fixtures and update snapshot tests"
 
 # drain a few, paced, off-hours — wire to cron/launchd:
-#   0 2 * * *  cd /repo && scripts/scheduler.py drain --max-per-run 3 --gap 120
-scripts/scheduler.py drain --max-per-run 3 --gap 120
+#   0 2 * * *  cd /repo && src/portage/scheduler.py drain --max-per-run 3 --gap 120
+src/portage/scheduler.py drain --max-per-run 3 --gap 120
 
 # compute reset timing for your INTERACTIVE bursts
-scripts/scheduler.py resets --window-anchor 2026-07-16T09:00:00+00:00 \
+src/portage/scheduler.py resets --window-anchor 2026-07-16T09:00:00+00:00 \
                             --week-anchor   2026-07-14T08:30:00+00:00
 ```
 

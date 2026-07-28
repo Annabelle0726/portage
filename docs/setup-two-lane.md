@@ -40,7 +40,7 @@ repo/
 │   └── config.ci.json          # Lane B in CI (no local host -> background = cheap)
 ├── .github/workflows/
 │   └── taskcapture-ci.yml       # deterministic test gate -> CCR-routed review
-├── scripts/
+├── src/portage/
 │   ├── failup.py                # the verified-escalation guard
 │   └── local-serve.sh           # warm the shared local model on the iMac
 ├── herdr/
@@ -70,7 +70,7 @@ classifier:
    never downshifted. No inference; can't be misrouted.
 2. **Predictive routing.** Free heuristics + the free local classifier send the
    obvious cases to the right tier. Allowed to be imperfect.
-3. **Fail-up guard (`scripts/failup.py`).** After a T0/T1 run, a deterministic
+3. **Fail-up guard (`src/portage/failup.py`).** After a T0/T1 run, a deterministic
    check — non-empty diff + `ruff` clean + `pytest` green — and on failure it
    parks the attempt, resets clean, and retries **one tier up**, to Opus. A
    misclassified hard task fails the check and self-corrects. Every attempt is
@@ -80,7 +80,7 @@ classifier:
 ## The local floor
 
 `background` and the classifier point at a local model — free, private, off every
-meter. Run `scripts/local-serve.sh` on the iMac to keep ONE model warm and serve
+meter. Run `src/portage/local-serve.sh` on the iMac to keep ONE model warm and serve
 it to the MacBook and Jetstream2 over Tailscale. Local widens the floor, not the
 ceiling: T2 judgment still goes to Opus. Local is also your **privacy tier** — if
 a routing step touches clinical data, it stays off third-party APIs entirely.

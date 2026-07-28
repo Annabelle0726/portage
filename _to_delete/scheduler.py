@@ -28,7 +28,7 @@ Commands:
 
 Wire `drain` to cron / launchd at your chosen off-hours (and, if you want, shortly
 after a weekly reset). Example crontab — drain 3 tasks nightly at 02:00 local:
-  0 2 * * *  cd /path/to/repo && scripts/scheduler.py drain --max-per-run 3
+  0 2 * * *  cd /path/to/repo && src/portage/scheduler.py drain --max-per-run 3
 """
 import argparse
 import json

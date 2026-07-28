@@ -1,11 +1,11 @@
 # PROJECT — meter- and sovereignty-aware routing for coding agents
 
 The focused contribution. Not a personal-efficiency tool (on a flat Claude
-subscription, discipline beats orchestration — see `specs/03`). This is the one
+subscription, discipline beats orchestration — see `docs/specs/03`). This is the one
 part with a reason to exist as open source: the piece that **isn't** just Claude.
 
 > **Naming note (2026-07):** the original thesis said "subscription-quota-aware."
-> The Scale-1 transition (`specs/11`, `REVISION-PLAN.md`) removes fixed
+> The Scale-1 transition (`docs/specs/11`, `REVISION-PLAN.md`) removes fixed
 > subscription rungs from the production ladder, so the general term is now
 > **meter-aware**: a meter is any scarce budget the router must respect — a PAYG
 > dollar ceiling, an institutional allocation balance, or the
@@ -43,7 +43,7 @@ grader) from the tutoring domain into a standalone coding-agent layer.
 
 **In (core to the contribution):**
 - The tier ladder `local → sovereign (jetstream2) → hosted open-weight →
-  proprietary PAYG` (`tiers.educloud.json` / the mode configs in `specs/10`–`11`)
+  proprietary PAYG` (`tiers.educloud.json` / the mode configs in `docs/specs/10`–`11`)
   and its configs, incl. the sensitive-data pin (`config.educloud-sensitive.json`,
   local-only by construction).
 - The **open-weight allowlist governance** at the `remote_open` tier: Herdr
@@ -68,7 +68,7 @@ grader) from the tutoring domain into a standalone coding-agent layer.
 - A generalizable policy schema so others plug their own tiers/backends.
 
 **Out (kept as optional scaffolding, not the contribution):**
-- Claude-only efficiency pilot (`specs/03`, now HISTORICAL), OpenRouter cost
+- Claude-only efficiency pilot (`docs/specs/03`, now HISTORICAL), OpenRouter cost
   routing, the personal multi-surface/scheduling quota tooling. Useful to *me*;
   not novel.
 - Runtime prompt engineer, fan-out arbiter, from-scratch router, sophisticated
@@ -96,7 +96,7 @@ grader) from the tutoring domain into a standalone coding-agent layer.
 - [x] Robust plan JSON extraction with validation + raw dump on failure.
 - [ ] Pin CLI + router + model IDs; encode the guard's rules as unit tests.
 - [ ] Stub-LLM smoke tests for the guard, decomposer, and tier router (token-free).
-- [ ] Split `unavailable` from `model_failed` in the guard + telemetry (specs/11).
+- [ ] Split `unavailable` from `model_failed` in the guard + telemetry (docs/specs/11).
 
 **Stage 2 — measure (the result):**
 - [ ] Baseline vs. treatment week on `taskcapture` via `measure.py`; defend
@@ -108,7 +108,7 @@ grader) from the tutoring domain into a standalone coding-agent layer.
 - [x] Sovereign tier is a *federation* (`litellm.config.yaml` model groups): a pool
       of institutional endpoints with free-before-metered, health-aware failover
       to the proprietary ceiling — provided natively by LiteLLM (ordered
-      deployments + cooldowns), not custom code. See `specs/05` and HANDOFF §2.
+      deployments + cooldowns), not custom code. See `~/dev/educloud/docs/specs/05-federated-sovereign.md` (relocated at CC-P0 v2 per CW02 §4) and HANDOFF §2.
 - [ ] Reuse `hpc-as-api`/`streamrelay` to expose each endpoint; add HPC-queue /
       allocation-balance awareness (current health is lazy circuit-breaking only).
 - [ ] Meter-window awareness reads a recorded /usage or a PAYG budget balance
@@ -121,3 +121,30 @@ grader) from the tutoring domain into a standalone coding-agent layer.
 The novelty is a mid-2026 snapshot: the quota-aware routers are one changelog away
 from adding an ACCESS/HPC tier. If planting the flag on the fusion, the window is
 now, and the measurement evidence is what makes it a result rather than a claim.
+
+---
+
+## Parked (defined later)
+
+Per CC-P0 v2 Step 5 — recorded so nothing is silently forgotten, not written
+as code:
+
+- **OpenHands substrate adoption beyond Lane B basics.** HB-1 wires the basic
+  Docker autonomy tier only. Deeper adoption (custom agent skills, multi-repo
+  runs) is revisited after the HB-1 report shows what the basics actually need.
+- **The Postgres outcome store and Langfuse wiring.** Both are commented out in
+  the LiteLLM config (`# database_url`, `# success_callback: ["langfuse"]`) —
+  Phase 8 per `docs/PLATFORM.md` §6. `measure.py` + JSONL is sufficient at
+  Scale 1; a hosted trace store is infrastructure weight one user doesn't need
+  yet.
+- **Adaptive routing and retraining.** The steward's classify/adapt loop stays
+  rule-based (deterministic pins + statistical priors, Beta-Binomial per
+  `docs/BUILD-PLAN.md`) until calibration volume exists. HB-4, parked, per the
+  herdr-build-plan's own routing-collapse caution.
+- **The steward fine-tune.** The base open-weight model runs unmodified. A
+  tuned variant is HB-4 work, gated on calibration data existing to tune
+  against, and on the collapse guards from the pitfall register landing first.
+- **Lane verifiers beyond leak and code.** Today: the leak-over-retrieval gate
+  (Belay) and the runnable code check (`failup.py`/`plan.py`). Additional
+  verifier lanes (math, factual, citation) are HB-2/S1 scope, pending the
+  CC-P1 verifier-contract repo stabilizing first — see CW02-decisions.md §2.3.

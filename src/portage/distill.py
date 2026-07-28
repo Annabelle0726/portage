@@ -1,4 +1,5 @@
 #!/usr/bin/env -S uv run --script
+# SPDX-License-Identifier: AGPL-3.0-only
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
@@ -12,7 +13,7 @@ but it must gain the collapse guards (class-weighted labels, exploration
 fraction, per-tier recall + CNA tracking) before any training run consumes
 its output.
 
-The key property (specs/09 §4): this platform LABELS ITSELF. No hand annotation.
+The key property (docs/specs/09 §4): this platform LABELS ITSELF. No hand annotation.
 
   routing (R2)   the CHEAPEST TIER THAT PASSED is the correct route, by
                  construction. The fail-up guard produces perfect labels as a
@@ -28,7 +29,7 @@ is enough signal to bother training yet.
   distill.py --project . --role routing --out data/routing.jsonl
   distill.py --project . --report
 
-HONEST LIMIT (specs/09 §6): these labels come from your own ladder, so a model
+HONEST LIMIT (docs/specs/09 §6): these labels come from your own ladder, so a model
 trained on them learns YOUR ladder, not the optimal one. Keep a held-out,
 human-judged slice as an anchor, and gate every adapter on the platform's
 non-inferiority rule before it ships.

@@ -2,7 +2,7 @@
 
 > **STATUS: HISTORICAL — pilot complete, retained as analysis.** The Claude-only
 > efficiency pilot is done and the fixed Claude Max / Codex Plus subscription
-> rungs are exiting the production ladder (`specs/10`–`11`, `REVISION-PLAN.md`);
+> rungs are exiting the production ladder (`docs/specs/10`–`11`, `REVISION-PLAN.md`);
 > the project moved to the open-first platform (PLATFORM.md). Nothing here is a
 > current routing instruction. The quota mechanics — three parallel caps, one
 > shared wallet, why cheaper models barely help a weekly cap — are **preserved

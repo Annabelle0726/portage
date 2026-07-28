@@ -11,21 +11,21 @@
 > calibration window (60–90 days, $60–80 envelope, $100 ceiling) as
 > instrumented comparison arms, and S4 cuts what the evidence says to cut.
 
-*Drafted 2026-07-21 from review of `specs/10` (Open-Weight Only) and `specs/11`
-(Hybrid Open-First + Proprietary PAYG) against PLATFORM.md, HANDOFF.md,
-PROJECT.md, specs/02/03/08/09, `.claude/tiers.claude.json`, and
+*Drafted 2026-07-21 from review of `docs/specs/10` (Open-Weight Only) and `docs/specs/11`
+(Hybrid Open-First + Proprietary PAYG) against PLATFORM.md, docs/BUILD-PLAN.md,
+PROJECT.md, docs/specs/02/03/08/09, `.claude/tiers.claude.json`, and
 `docs/phase-1-findings.md`. This plan is the work order for the next build
 sessions; nothing in the repo has been rewritten yet except the addition of
-specs/10, specs/11, and this file.*
+docs/specs/10, docs/specs/11, and this file.*
 
 ## 0. Decision recorded
 
-- **Operating mode now:** `policy_mode: hybrid` (specs/11) — local open →
+- **Operating mode now:** `policy_mode: hybrid` (docs/specs/11) — local open →
   hosted open → Anthropic/OpenAI/Perplexity **PAYG only after verified open
   failure**. Fixed subscription rungs (Claude Max / Codex Plus) exit the
   production ladder.
-- **End state:** `policy_mode: open_weight_only` (specs/10). The switch is
-  **empirical, not ideological**: flip when `proprietary_displacement` (specs/11
+- **End state:** `policy_mode: open_weight_only` (docs/specs/10). The switch is
+  **empirical, not ideological**: flip when `proprietary_displacement` (docs/specs/11
   §measure.py additions) stays below threshold — proposed **< 5% of verified
   successes over a 4-week window** (tune in prereg).
 - **Scope now:** Greg's personal Scale-1 pilot (iMac + MacBook Pro). EduCloud
@@ -34,8 +34,8 @@ specs/10, specs/11, and this file.*
 ## 1. What the new architecture improves (assessment)
 
 1. **Subscription rungs removed.** The old production ladder
-   (`local → Claude Max/Codex → …`, specs/08 Scale 1; `tiers.claude.json`)
-   entangled routing with flat-rate psychology — specs/03's own finding was
+   (`local → Claude Max/Codex → …`, docs/specs/08 Scale 1; `tiers.claude.json`)
+   entangled routing with flat-rate psychology — docs/specs/03's own finding was
    that discipline beats orchestration on a flat plan. All-PAYG makes every
    marginal call carry a marginal price, so *cost per verified success* is
    finally a single honest number and the router's decisions are real
@@ -49,7 +49,7 @@ specs/10, specs/11, and this file.*
    frontier tier stops earning its place*.
 3. **The escalation boundary is now policy, not habit.** Proprietary requires
    (a) verified open failure, (b) documented specialist need, or (c) explicit
-   override (specs/11). This is the fail-up guard's philosophy promoted to the
+   override (docs/specs/11). This is the fail-up guard's philosophy promoted to the
    provider boundary — it prevents hybrid from silently re-becoming
    proprietary-first.
 4. **Model-policy / infra-policy separation at `remote_open`.** Herdr picks the
@@ -62,7 +62,7 @@ specs/10, specs/11, and this file.*
    poisons win-tier stats, adaptive-router priors (PLATFORM §6), and Parity
    data. Small change, large integrity payoff.
 6. **Capability aliases over model names** (`local/code-large`,
-   `proprietary/reasoning`…). Matches the steward design (specs/09) and LiteLLM
+   `proprietary/reasoning`…). Matches the steward design (docs/specs/09) and LiteLLM
    model-groups; Parity Bench assigns the winner behind each alias. Business
    logic stops churning with model releases.
 7. **Rescue-efficiency metric**: proprietary dollars that converted verified
@@ -70,7 +70,7 @@ specs/10, specs/11, and this file.*
    keep in flipped outcomes, not plausible prose.
 8. **Hardware purchase becomes a measured decision.** The 128 GB node is bought
    when telemetry shows local-too-small failures that hosted-open solves at
-   volume (specs/10 §hardware rule) — capex version of buy-over-build.
+   volume (docs/specs/10 §hardware rule) — capex version of buy-over-build.
 9. **Aggregator redundancy.** Together (serverless per-token) as direct backup,
    DeepInfra optional — removes OpenRouter as a single point of dependency and
    lets the bench compare aggregation vs direct on the same model.
@@ -81,7 +81,7 @@ specs/10, specs/11, and this file.*
 
 ## 2. Conflicts, gaps, and sequencing risks (resolve during revision)
 
-1. **The sovereign HPC rung is absent from specs/10–11.** Understandable at
+1. **The sovereign HPC rung is absent from docs/specs/10–11.** Understandable at
    personal Scale 1 (no allocation wired yet), but `local → sovereign →
    subscription → API` is PROJECT.md's *thesis*. The unified ladder (§3)
    reinserts **T4 sovereign** between local and hosted-open; it simply sits
@@ -90,7 +90,7 @@ specs/10, specs/11, and this file.*
 2. **Cancel subscriptions AFTER the bench baseline.** Parity Bench arm A4
    (native Claude Code on Max) and the amortized/quota-share accounting
    require live subscriptions. Sequence: run the 12-task pilot cut (PLATFORM
-   §8) across A1/A4 while Max is active → then cancel (specs/11 Phase A
+   §8) across A1/A4 while Max is active → then cancel (docs/specs/11 Phase A
    "cancel once the PAYG hatch is tested"). If cancellation happens first,
    A4 becomes API-priced and the amortized arm is declared historical in the
    prereg — acceptable, but decide, don't drift.
@@ -108,15 +108,15 @@ specs/10, specs/11, and this file.*
    (no non-local deployments exist in that model_list) — never a runtime check,
    never delegated to a provider's retention promise.
 6. **Ladder-walk latency on known-hard tasks.** Walking T1→T6 before rescue
-   costs wall-clock. Mitigation already in specs/11: per-task-class
+   costs wall-clock. Mitigation already in docs/specs/11: per-task-class
    `proprietary_budget` — classes with a displacement track record get a
    bounded pre-authorized ceiling; routine classes get budget 0. Triage (R1/R2)
    assigns the class; the guard still requires the open attempt unless the
    class is documented specialist.
-7. **Supersessions.** specs/03 (Max-wallet pilot) → mark HISTORICAL (its
+7. **Supersessions.** docs/specs/03 (Max-wallet pilot) → mark HISTORICAL (its
    findings stand; its config retires). `.claude/tiers.claude.json` → retire
    after Phase A (Lane A native fallback may keep a copy pointed at LiteLLM
-   aliases). specs/02's ladder and specs/08's Scale-1 table → rewritten per §4.
+   aliases). docs/specs/02's ladder and docs/specs/08's Scale-1 table → rewritten per §4.
 
 ## 3. The unified ladder (one ladder, three modes)
 
@@ -160,22 +160,22 @@ any open-to-closed step (PLATFORM §2 rule, unchanged).
 | File | Change |
 |---|---|
 | `PLATFORM.md` | §2 ladder → §3 above (T0–T7 + stall); §3 modes: rename full-open → `open_weight_only`, keep hybrid/sovereign, add mode-switch-is-config-only; §5.3 add displacement + rescue-efficiency to metrics; §6 note unavailable events excluded from router priors; §9 add transition phases (§5 below). |
-| `HANDOFF.md` | §2 buy-over-build: add rows — OpenRouter (config, not code), Together/DeepInfra (config), SearXNG (deploy, not build); §3 diagram: Lane B deployments become local(order1) → sovereign(order2) → openrouter-allowlist(order3) → together(order4) → anthropic/openai PAYG(order5, hybrid); §4: insert Phase 6a (§5); Phase 2 gains unavailable-vs-failed in failup; Phase 4 gains new metrics. |
+| `docs/BUILD-PLAN.md` | §2 buy-over-build: add rows — OpenRouter (config, not code), Together/DeepInfra (config), SearXNG (deploy, not build); §3 diagram: Lane B deployments become local(order1) → sovereign(order2) → openrouter-allowlist(order3) → together(order4) → anthropic/openai PAYG(order5, hybrid); §4: insert Phase 6a (§5); Phase 2 gains unavailable-vs-failed in failup; Phase 4 gains new metrics. |
 | `PROJECT.md` | Thesis edit per §2.3 (meter-awareness generalization); ladder line → `local → sovereign HPC → hosted open-weight → PAYG frontier (boundary-gated)`; scope-in adds allowlist governance + displacement report; subscriptions move to "benchmark baseline only". |
-| `README.md` | Read-order table: add specs/10–11 + this plan; one-paragraph ladder summary update. |
-| `specs/02` | Local ladder → `local_fast → local_burst → [local_large] → remote_open → remote_open_direct → PAYG (hybrid)`; EduCloud section gains per-lane policy_mode table (§6). |
-| `specs/03` | Prepend HISTORICAL banner: pilot complete, subscriptions exiting production ladder; findings preserved for bench protocol. |
-| `specs/08` | Scale-1 table rewritten (new ladder; OpenRouter/Together roles; "nothing new to adopt" still true — both are LiteLLM config); Scale-2 note: sovereign rung slots at T4 unchanged. |
-| `specs/09` | No structural change; add license/allowlist check to R2 routing's deterministic layer; note R3 templates gain `code.remote-open.md` key. |
+| `README.md` | Read-order table: add docs/specs/10–11 + this plan; one-paragraph ladder summary update. |
+| `docs/specs/02` | Local ladder → `local_fast → local_burst → [local_large] → remote_open → remote_open_direct → PAYG (hybrid)`; EduCloud section gains per-lane policy_mode table (§6). |
+| `docs/specs/03` | Prepend HISTORICAL banner: pilot complete, subscriptions exiting production ladder; findings preserved for bench protocol. |
+| `docs/specs/08` | Scale-1 table rewritten (new ladder; OpenRouter/Together roles; "nothing new to adopt" still true — both are LiteLLM config); Scale-2 note: sovereign rung slots at T4 unchanged. |
+| `docs/specs/09` | No structural change; add license/allowlist check to R2 routing's deterministic layer; note R3 templates gain `code.remote-open.md` key. |
 | `.claude/tiers.claude.json` | Retire in Phase A (see §2.7). |
 | `KNOWN_GOOD_VERSIONS.md` | Add OpenRouter + Together endpoints/models as pinned entries; allowlist is versioned config with license + quant floor per model. |
 | `litellm.config.yaml` (Phase 1 artifact) | Add openrouter/together deployments with `order`, budgets, cooldowns; per-mode variants: `litellm.open-only.yaml`, `litellm.hybrid.yaml`, `litellm.sensitive.yaml` (unchanged — local-only by absence). |
-| `scripts/failup.py` | Distinguish connection-refused/timeout (skip rung, log `unavailable`) from verifier failure (escalate, log `model_failed`). |
-| `scripts/measure.py` | New columns/reports: per-rung solve %, unavailable vs not-good-enough, `proprietary_displacement`, rescue efficiency ($→flip rate), open-inference cost per verified success. |
-| `herdr-meters/models.json` | Becomes the allowlist manifest: license, weights-source, quant floor, ZDR-capable providers. |
+| `src/portage/failup.py` | Distinguish connection-refused/timeout (skip rung, log `unavailable`) from verifier failure (escalate, log `model_failed`). |
+| `src/portage/measure.py` | New columns/reports: per-rung solve %, unavailable vs not-good-enough, `proprietary_displacement`, rescue efficiency ($→flip rate), open-inference cost per verified success. |
+| `plugins/herdr-meters/models.json` | Becomes the allowlist manifest: license, weights-source, quant floor, ZDR-capable providers. |
 | `KICKOFF-PROMPT.md` | Next-session scope = Phase 6a items 1–4 (§5), not Phase 0 (done). |
 
-## 5. Pilot transition sequence (maps specs/11 Phases A→C onto HANDOFF)
+## 5. Pilot transition sequence (maps docs/specs/11 Phases A→C onto HANDOFF)
 
 **Phase 6a — PAYG transition (insert after current Phase 4/5 work, before
 Phase 6 sovereign):**
@@ -200,7 +200,7 @@ Phase 6 sovereign):**
    KNOWN_GOOD_VERSIONS (it's a cost-accounting epoch).
 6. Displacement cadence: `measure.py report` weekly; flip criterion per §0.
 
-**Phase B (hardware):** buy the 128 GB node only on specs/10's four-condition
+**Phase B (hardware):** buy the 128 GB node only on docs/specs/10's four-condition
 rule; it enters as T3 `local_large` deployments — no other change.
 
 **Phase C (flip):** `policy_mode: hybrid` → `open_weight_only` = swap LiteLLM
@@ -209,7 +209,7 @@ the displacement evidence attached.
 
 ## 6. EduCloud deployment plan (planning in place now; scheduled later)
 
-Scale-invariance rule (specs/08) holds: the custom core — guard, triage,
+Scale-invariance rule (docs/specs/08) holds: the custom core — guard, triage,
 steward, meters, metrics — is identical; only the ladder population and
 tenancy change.
 
@@ -253,7 +253,7 @@ open-to-closed step. No fan-out orchestration.
 
 ## 8. Acceptance for the revision work itself
 
-- Docs updated per §4; `specs/10`/`11` referenced as normative Scale-1 inputs.
+- Docs updated per §4; `docs/specs/10`/`11` referenced as normative Scale-1 inputs.
 - `litellm.hybrid.yaml` validates; allowlist manifest carries license + quant
   floor for every remote-open model.
 - Stub tests: unavailable-vs-failed split; displacement + rescue reports from

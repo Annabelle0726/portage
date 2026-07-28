@@ -1,6 +1,6 @@
-"""Shared fixtures for testing the scripts/ tools without network or model calls.
+"""Shared fixtures for testing the src/portage/ tools without network or model calls.
 
-scripts/failup.py and scripts/plan.py are single-file `uv run --script`
+src/portage/failup.py and src/portage/plan.py are single-file `uv run --script`
 utilities, not a package, so they're loaded by path rather than imported
 normally.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-SCRIPTS = REPO / "scripts"
+SCRIPTS = REPO / "src" / "portage"
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 

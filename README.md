@@ -15,12 +15,12 @@ against the products it aims to replace.
 | **`PLATFORM.md`** | The capstone: final architecture, the three modes, lane verifiers, and the **Parity Bench** comparison suite. Start here. |
 | **`REVISION-PLAN.md`** | The Scale-1 transition work order (2026-07): open-first ladder with a PAYG ceiling, file-by-file edits, pilot sequence, EduCloud deployment plan. Read after PLATFORM. |
 | **`LINE-P-ROADMAP.md`** | The staging plan of record: S0–S5, hardware backbone, the 60–90 day calibration window. Where it differs from older plans, it wins. |
-| **`HANDOFF.md`** | Build instructions: buy-vs-build resolution, phases 0–10 (+6a), acceptance criteria, standing rules. |
+| **`docs/BUILD-PLAN.md`** | Build instructions: buy-vs-build resolution, phases 0–10 (+6a), acceptance criteria, standing rules. |
 | `PROJECT.md` | Mission and the novelty claim (what is actually new vs. the ecosystem). |
 | `KICKOFF-PROMPT.md` | Retired (see its banner) — sessions are scoped by LINE-P-ROADMAP + the CW/CC/HB prompts. |
 | `EDUCLOUD-BRIEF.md` | Positioning brief for EduCloud stakeholders: decentralized AI as public infrastructure, and why education specifically needs it. |
-| `specs/00`–`09` | The reasoning record. Each spec explains *why*, not just what. |
-| `specs/10`, `specs/11` | Scale-1 target architectures: **10** = open-weight-only (end state), **11** = hybrid open-first + PAYG ceiling (current mode). Normative inputs to the revision plan. |
+| `docs/specs/00`–`09` | The reasoning record. Each spec explains *why*, not just what. |
+| `docs/specs/10`, `docs/specs/11` | Scale-1 target architectures: **10** = open-weight-only (end state), **11** = hybrid open-first + PAYG ceiling (current mode). Normative inputs to the revision plan. |
 
 ## The five ideas
 
@@ -42,28 +42,28 @@ against the products it aims to replace.
 
 ## Operating mode
 
-Current mode is **`hybrid`** (specs/11): local open → sovereign → hosted open →
+Current mode is **`hybrid`** (docs/specs/11): local open → sovereign → hosted open →
 Anthropic/OpenAI/Perplexity **PAYG only after verified open failure**. Fixed
 Claude Max / Codex Plus subscription rungs are leaving the production ladder
 (they remain only as Parity Bench baseline arms). The end state is
-**`open_weight_only`** (specs/10); the switch is a config-variant swap, triggered
+**`open_weight_only`** (docs/specs/10); the switch is a config-variant swap, triggered
 empirically by the `proprietary_displacement` metric, not by calendar. See
 `REVISION-PLAN.md`.
 
 ## Layout
 
 ```
-PLATFORM.md REVISION-PLAN.md HANDOFF.md PROJECT.md   read in that order
+PLATFORM.md REVISION-PLAN.md docs/BUILD-PLAN.md PROJECT.md   read in that order
 litellm.config.yaml                  the routing spine (tiered model groups)
 litellm.sensitive.yaml               sovereign mode: local-only by construction
-specs/                               00-11, the reasoning record
-scripts/
+docs/specs/                               00-11, the reasoning record
+src/portage/
   failup.py      deterministic fail-up guard  (core contribution)
   plan.py        plan-first decomposer, runnable per-subtask checks
   measure.py     report | downscale - quality-gated efficiency metrics
   distill.py     turn verifier logs into training data (self-labeling)
   local-serve.sh keep one local model warm, shared over Tailscale
-herdr-meters/                        Herdr plugin: cross-vendor meter routing
+plugins/herdr-meters/                        Herdr plugin: cross-vendor meter routing
   meters.py      board / picker / dispatch / mark / research / loguse
   classify.py    triage -> classify -> route (deterministic rules first)
   adapt.py       target-conditioned prompt templates (emits template_id)
@@ -84,10 +84,10 @@ litellm --config litellm.config.yaml --port 4000
 herdr plugin link ./herdr-meters && herdr plugin action invoke meters.hybrid.board
 ```
 
-Then read `HANDOFF.md` Phase 0 and start there. The Scale-1 transition (add
+Then read `docs/BUILD-PLAN.md` Phase 0 and start there. The Scale-1 transition (add
 hosted-open + PAYG ceiling, cancel subscriptions) is Phase 6a in
 `REVISION-PLAN.md`; Scale 2 (add sovereign HPC) and Scale 3 (federated,
-published) are in `specs/08`.
+published) are in `docs/specs/08`.
 
 ## Status
 
