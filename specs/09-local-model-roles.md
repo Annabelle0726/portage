@@ -17,7 +17,7 @@ single set of weights in memory instead of N models competing for it.
 | # | Role | Input → Output | Deterministic layer that runs first |
 |---|---|---|---|
 | R1 | **Triage** | task → {specified? missing[], one clarifying question} | vagueness/length heuristics |
-| R2 | **Routing** | task → {provider, model, effort, confidence} | sensitive pins, `@overrides`, research phrasing |
+| R2 | **Routing** | task → {provider, model, effort, confidence} | sensitive pins, `@overrides`, research phrasing, **open-weight license/allowlist check** (a non-allowlisted model is never a candidate) |
 | R3 | **Prompt adaptation** (new, §3) | (task, target, lane) → adapted prompt | template selection by exact key |
 | R4 | **Background/throwaway** | compaction, summaries, renames, extraction, commit messages | n/a |
 | R5 | **Sensitive-lane execution** | all work in sovereign/clinical workspaces | config absence — no other tier exists |
@@ -39,8 +39,10 @@ rewriting. The distinction is the whole safety argument — a small model
 reinterpreting your intent is worse than no adaptation. So:
 
 - Templates live in `herdr-meters/prompts/`, keyed
-  `{lane}.{model_class}.md` (e.g. `code.open.md`, `code.frontier.md`,
-  `science.any.md`). Selection is a **deterministic dict lookup**, no inference.
+  `{lane}.{model_class}.md` (e.g. `code.open.md`, `code.remote-open.md`,
+  `code.frontier.md`, `science.any.md`). Selection is a **deterministic dict
+  lookup**, no inference. `remote-open` (hosted open-weight) gets more explicit
+  scaffolding than local-open, less than frontier.
 - Slots are filled from structured facts already known: task text, repo
   conventions (from CLAUDE.md/AGENTS.md), the subtask's acceptance command,
   files named, tier constraints.

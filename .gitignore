@@ -7,5 +7,5 @@ __pycache__/
 *.pyc
 .venv/
 
-# Local router credentials should come from env, never a committed file
-.claude-code-router/config.local.json
+# device-bridge git lock workaround (bridge cannot unlink)
+_git_locks_to_delete/

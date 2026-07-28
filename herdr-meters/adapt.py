@@ -46,7 +46,9 @@ EXTRACTOR = os.environ.get("METERS_CLASSIFIER", "qwen2.5-coder:7b")
 # `ceiling` mis-sent Sonnet — a frontier-family model — to the open template.
 FRONTIER_PROVIDERS = {"claude", "anthropic", "codex", "openai"}
 
-FILE_RE = re.compile(r"\b[\w./-]+\.(?:py|ts|tsx|js|jsx|rs|go|java|rb|md|json|toml|ya?ml|sql)\b")
+FILE_RE = re.compile(
+    r"\b[\w./-]+\.(?:py|ts|tsx|js|jsx|rs|go|java|rb|md|json|toml|ya?ml|sql)\b"
+)
 
 
 def model_class(target_id: str) -> str:
@@ -83,7 +85,7 @@ def extract_files(task: str) -> list[str]:
              "List only file paths or code symbols named in this task, one per "
              "line. If none, output NONE. Do not explain.\n\n" + task],
             capture_output=True, text=True, timeout=45)
-        out = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+        out = [line.strip() for line in r.stdout.splitlines() if line.strip()]
         return [] if not out or out[0].upper().startswith("NONE") else out[:8]
     except Exception:
         return []

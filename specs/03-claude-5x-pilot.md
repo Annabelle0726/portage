@@ -1,6 +1,13 @@
 # 03 — Claude-only 5x efficiency pilot
 
-> **STATUS: superseded as the plan, retained as analysis.** The project moved past Claude-only optimisation to the open platform (PLATFORM.md). The quota mechanics here — three parallel caps, one shared wallet, why cheaper models barely help a weekly cap — are still the basis of the cost accounting in PLATFORM.md §5.4.
+> **STATUS: HISTORICAL — pilot complete, retained as analysis.** The Claude-only
+> efficiency pilot is done and the fixed Claude Max / Codex Plus subscription
+> rungs are exiting the production ladder (`specs/10`–`11`, `REVISION-PLAN.md`);
+> the project moved to the open-first platform (PLATFORM.md). Nothing here is a
+> current routing instruction. The quota mechanics — three parallel caps, one
+> shared wallet, why cheaper models barely help a weekly cap — are **preserved
+> for the Parity Bench cost accounting** (PLATFORM.md §5.4) and the amortized /
+> quota-share pricing of the subscription baseline arms.
 
 Make the subscription you're paying for efficient before adding any paid meter.
 No OpenRouter, no local, no Jetstream, **no router** — this version is native

@@ -36,7 +36,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -56,7 +56,7 @@ def enqueue(args) -> None:
         "project": args.project,
         "tiers": args.tiers,
         "max_tier": args.max_tier,
-        "added": datetime.now(timezone.utc).isoformat(),
+        "added": datetime.now(UTC).isoformat(),
     }
     with queue_path(args.project).open("a") as f:
         f.write(json.dumps(entry) + "\n")
@@ -68,7 +68,7 @@ def drain(args) -> None:
     if not qp.is_file():
         print("[sched] queue empty")
         return
-    pending = [json.loads(l) for l in qp.read_text().splitlines() if l.strip()]
+    pending = [json.loads(line) for line in qp.read_text().splitlines() if line.strip()]
     ran, remaining = 0, []
 
     for item in pending:
@@ -88,7 +88,7 @@ def drain(args) -> None:
         rc = subprocess.run(cmd, cwd=item.get("project", args.project)).returncode
         ran += 1
         if rc != 0:
-            print(f"[sched] task did not pass under the cap; left for review",
+            print("[sched] task did not pass under the cap; left for review",
                   file=sys.stderr)
         if ran < args.max_per_run and args.gap:
             time.sleep(args.gap)             # pace so we don't fire all at once
@@ -98,7 +98,7 @@ def drain(args) -> None:
 
 
 def resets(args) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     wa = datetime.fromisoformat(args.window_anchor) if args.window_anchor else now
     ka = datetime.fromisoformat(args.week_anchor) if args.week_anchor else now
     five = wa + timedelta(hours=5)

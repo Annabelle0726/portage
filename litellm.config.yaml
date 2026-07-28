@@ -4,40 +4,89 @@
 #
 #   litellm --config litellm.config.yaml --port 4000
 #
-# The ladder is expressed as ONE model group per lane with ordered deployments.
-# `order` encodes the platform's core policy: free before metered, scarce last.
-# Escalation is open-to-open first; the frontier deployment is last by design.
+# Two different jobs share these deployments, so each is registered TWICE under
+# different model_names, on purpose:
+#
+#   RUNGS  (local-small, local-big, sovereign-work, sonnet, opus) are individually
+#           addressable. failup.py's tiers files (.claude/tiers.*.json) name a rung
+#           directly — that's CAPABILITY escalation: the guard picked a specific
+#           point on the ladder and must reach exactly that deployment, not
+#           whichever one happens to be up.
+#   GROUPS (work, judgment) are ordered-failover pools over the SAME deployments.
+#           `order` encodes the platform's core policy: free before metered,
+#           scarce last. That's AVAILABILITY failover: reach the best deployment
+#           that is actually up. A caller that doesn't need a specific rung (e.g.
+#           herdr-meters dispatch) targets the group instead.
+#
+# Rungs carry no `order` (address one specific deployment, no fallback-among-peers
+# by definition); groups do. Escalation is open-to-open first; the frontier
+# deployment is last by design.
 
 model_list:
-  # ---- work: the general execution group -----------------------------------
-  - model_name: work
+  # ---- capability rungs: named individually for the fail-up ladder ----------
+  - model_name: local-small
+    litellm_params:
+      model: ollama/qwen2.5-coder:7b
+      api_base: http://localhost:11434
+    model_info: {commons_tier: local, cost_class: free}
+
+  - model_name: local-big
     litellm_params:
       model: ollama/qwen2.5-coder:32b
       api_base: http://localhost:11434       # or the warm iMac over Tailscale
-      order: 1                                # free, private, always first
-    model_info: {tier: local, cost_class: free}
+    model_info: {commons_tier: local, cost_class: free}
 
-  - model_name: work
+  - model_name: sovereign-work
     litellm_params:
       model: openai/gpt-oss-120b              # OpenAI-compatible HPC endpoint
       api_base: os.environ/SOVEREIGN_BASE_URL # Jetstream2 / campus HPC / vLLM
       api_key: os.environ/SOVEREIGN_TOKEN
+    model_info: {commons_tier: sovereign, cost_class: free}
+
+  - model_name: sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info: {commons_tier: frontier, cost_class: metered}
+
+  - model_name: opus
+    litellm_params:
+      model: anthropic/claude-opus-4-8
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info: {commons_tier: frontier, cost_class: metered, scarce: true}
+
+  # ---- work: availability-failover pool over the local/sovereign/frontier
+  # rungs above, PLUS a cheap open-weight API tier that is deliberately NOT a
+  # named rung — no tiers.*.json ladder addresses it individually; it exists
+  # only as a cost fallback within this group. ------------------------------
+  - model_name: work
+    litellm_params:
+      model: ollama/qwen2.5-coder:32b
+      api_base: http://localhost:11434
+      order: 1                                # free, private, always first
+    model_info: {commons_tier: local, cost_class: free}
+
+  - model_name: work
+    litellm_params:
+      model: openai/gpt-oss-120b
+      api_base: os.environ/SOVEREIGN_BASE_URL
+      api_key: os.environ/SOVEREIGN_TOKEN
       order: 2                                # sovereign, zero marginal cost
-    model_info: {tier: sovereign, cost_class: free}
+    model_info: {commons_tier: sovereign, cost_class: free}
 
   - model_name: work
     litellm_params:
       model: openrouter/deepseek/deepseek-chat
       api_key: os.environ/OPENROUTER_API_KEY
       order: 3                                # cheap open-weight API
-    model_info: {tier: open_api, cost_class: metered}
+    model_info: {commons_tier: open_api, cost_class: metered}
 
   - model_name: work
     litellm_params:
       model: anthropic/claude-sonnet-5
       api_key: os.environ/ANTHROPIC_API_KEY
       order: 4                                # frontier: hybrid mode only
-    model_info: {tier: frontier, cost_class: metered}
+    model_info: {commons_tier: frontier, cost_class: metered}
 
   # ---- judgment: planning, review, milestone gates -------------------------
   # Deliberately NOT a cheap-first ladder. A bad plan poisons every stage under
@@ -47,7 +96,7 @@ model_list:
       model: anthropic/claude-opus-4-8
       api_key: os.environ/ANTHROPIC_API_KEY
       order: 1
-    model_info: {tier: frontier, cost_class: metered, scarce: true}
+    model_info: {commons_tier: frontier, cost_class: metered, scarce: true}
 
   - model_name: judgment
     litellm_params:
@@ -55,15 +104,17 @@ model_list:
       api_base: os.environ/SOVEREIGN_BASE_URL
       api_key: os.environ/SOVEREIGN_TOKEN
       order: 2                                # open fallback for full-open mode
-    model_info: {tier: sovereign, cost_class: free}
+    model_info: {commons_tier: sovereign, cost_class: free}
 
   # ---- steward: triage, classify, route, adapt, propose checks -------------
-  # Always local. Free, private, warm. Never routed off-machine.
+  # Always local. Free, private, warm. Never routed off-machine. Same physical
+  # deployment as local-small, registered separately: it's a distinct role
+  # (classification, not coding capability) that could be tuned independently.
   - model_name: steward
     litellm_params:
       model: ollama/qwen2.5-coder:7b
       api_base: http://localhost:11434
-    model_info: {tier: local, cost_class: free}
+    model_info: {commons_tier: local, cost_class: free}
 
 router_settings:
   routing_strategy: simple-shuffle    # `order` governs; shuffle breaks ties
@@ -73,15 +124,20 @@ router_settings:
   enable_pre_call_checks: true
   fallbacks:
     - {work: [judgment]}              # exhausted the work ladder -> judgment
-  # Health checks surface a dead HPC endpoint before a task discovers it.
-  background_health_checks: true
-  health_check_interval: 300
 
 litellm_settings:
   drop_params: true                   # tolerate provider param mismatches
-  success_callback: ["langfuse"]      # outcome store; see PLATFORM.md §6
-  failure_callback: ["langfuse"]
+  # Langfuse callbacks are Phase 8 (PLATFORM.md §6). Enabling them before the
+  # outcome store exists makes the proxy fail on every request, so they stay
+  # commented until Phase 8 provisions Langfuse keys.
+  # success_callback: ["langfuse"]
+  # failure_callback: ["langfuse"]
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  database_url: os.environ/DATABASE_URL   # Postgres: routing state + outcomes
+  # Health checks surface a dead HPC endpoint before a task discovers it.
+  # VERIFIED v1.93.0: these two live under general_settings, NOT router_settings
+  # (the proxy hard-fails at startup otherwise). See KNOWN_GOOD_VERSIONS.md.
+  background_health_checks: true
+  health_check_interval: 300
+  # database_url: os.environ/DATABASE_URL  # Postgres outcome store — Phase 8

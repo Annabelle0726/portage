@@ -1,10 +1,10 @@
 {
-  "_comment": "The routing target space. The classifier picks ONE target from here: provider + model + effort. Keep this current — it's the single place model names and effort levels live, so vendor drift is a one-file fix (see the maintenance spec).",
+  "_comment": "The routing target space. The classifier picks ONE target from here: provider + model + effort. Keep this current — it's the single place model names and effort levels live, so vendor drift is a one-file fix (see the maintenance spec). local.*/claude.* 'model' values are the same rung names litellm.config.yaml and .claude/tiers.*.json use (KNOWN_GOOD_VERSIONS.md) — one vocabulary across the guard, the proxy, and the classifier.",
 
   "targets": [
     {
       "id": "local.small",
-      "provider": "local", "model": "qwen2.5-coder:7b", "effort": null,
+      "provider": "local", "model": "local-small", "effort": null,
       "cost": "free", "meter": "none",
       "good_for": ["classify", "summarize", "rename", "extract", "boilerplate"],
       "bad_for": ["multi-file reasoning", "architecture", "subtle debugging"],
@@ -12,7 +12,7 @@
     },
     {
       "id": "local.big",
-      "provider": "local", "model": "qwen2.5-coder:32b", "effort": null,
+      "provider": "local", "model": "local-big", "effort": null,
       "cost": "free", "meter": "none",
       "good_for": ["scoped single-file edits", "tests", "private/clinical work", "offline"],
       "bad_for": ["large refactors", "cross-file design"],
@@ -44,7 +44,7 @@
     },
     {
       "id": "claude.default",
-      "provider": "claude", "model": "claude-sonnet-5", "effort": "default",
+      "provider": "claude", "model": "sonnet", "effort": null,
       "cost": "subscription", "meter": "max_shared",
       "good_for": ["repo-aware edits", "tests", "most day-to-day building"],
       "bad_for": [],
@@ -52,7 +52,7 @@
     },
     {
       "id": "claude.deep",
-      "provider": "claude", "model": "claude-opus-4-8", "effort": "high",
+      "provider": "claude", "model": "opus", "effort": "high",
       "cost": "subscription", "meter": "max_opus_cap",
       "good_for": ["architecture", "large refactors", "subtle debugging", "milestone/plan judgment"],
       "bad_for": ["routine volume — draws the tightest cap you have"],
@@ -72,6 +72,8 @@
 
   "constraints": [
     "Never pair elevated effort with a low-ceiling target — wasted latency, no gain.",
+    "Claude Code effort is exactly low|medium|high|xhigh|max (verified 2.1.207); null omits the flag. An unknown value only warns, so a typo silently flattens the ladder.",
+    "Codex effort values here are UNVERIFIED — the Codex CLI is not installed on this machine.",
     "Small/fast models reject the top effort tier; use the next one down.",
     "Sensitive work is pinned to local.* by deterministic rule, never by the classifier.",
     "On uncertainty, escalate to a HIGHER ceiling. Never guess downward."

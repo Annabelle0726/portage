@@ -19,4 +19,5 @@ ollama run qwen2.5-coder:32b ""      # T1 floor (used by the fail-up guard)
 ollama run qwen2.5-coder:7b  ""      # T0 background + difficulty classifier
 
 TSNAME="$(tailscale status --json 2>/dev/null | grep -o '"DNSName":"[^"]*' | head -1 | cut -d'"' -f4 || true)"
-echo "Local models warm. Point CCR's local provider at: http://${TSNAME:-<imac-tailscale-name>}:11434/v1/chat/completions"
+echo "Local models warm. Point litellm.config.yaml's local deployment api_base at:"
+echo "  http://${TSNAME:-<imac-tailscale-name>}:11434"

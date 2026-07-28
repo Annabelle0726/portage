@@ -1,6 +1,9 @@
-[
-  "local,qwen2.5-coder:7b",
-  "sovereign,gpt-oss-120b",
-  "anthropic,claude-sonnet-5",
-  "anthropic,claude-opus-4-8"
-]
+{
+  "_comment": "Same LiteLLM-gateway requirement as tiers.local.json (see its _comment). EduCloud ladder: local -> sovereign HPC -> frontier API, escalating only when the cheaper rung's deterministic checks fail.",
+  "tiers": [
+    "local-small",
+    "sovereign-work",
+    "sonnet",
+    {"model": "opus", "effort": "high"}
+  ]
+}

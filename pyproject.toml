@@ -9,6 +9,13 @@ license = {text = "Apache-2.0"}
 [project.optional-dependencies]
 # Installed only where actually needed, so the core stays dependency-free.
 proxy = ["litellm[proxy]"]
+
+[dependency-groups]
+# uv-native (PEP 735) dependency GROUPS, not extras: `uv run`/`uv sync` include
+# these by default with no --extra flag needed. Verified (Phase 2): a bare
+# `uv run pytest -q` with no prior sync fails to find pytest at all when it
+# lives under [project.optional-dependencies] instead — the milestone-gate CI
+# job never passes `--extra dev`, so that placement was silently broken.
 dev = ["pytest", "ruff"]
 
 [tool.ruff]

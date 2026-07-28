@@ -1,5 +1,10 @@
 # EduCloud brief — decentralized AI as public infrastructure
 
+> Note (July 2026): platform-level positioning now lives in
+> `../educloud/WHITEPAPER.md` and `../educloud/SYSTEM.md` (settled names;
+> four AI consumers on Line E, including Outfitter's allocation planner).
+> This brief predates those documents and keeps its original text.
+
 *A positioning and design brief to carry into the EduCloud project. Audience:
 EduCloud collaborators and institutional stakeholders, not just engineers.*
 

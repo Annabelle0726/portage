@@ -43,7 +43,7 @@ def state(project: str) -> Path:
 def read_jsonl(p: Path) -> list[dict]:
     if not p.is_file():
         return []
-    return [json.loads(l) for l in p.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
 
 
 def tasks(project: str) -> list[dict]:

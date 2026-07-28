@@ -24,12 +24,12 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 FAILUP = HERE / "failup.py"
-PLAN_MODEL = "anthropic,claude-opus-4-8"   # planning is a T2 judgment task
+PLAN_MODEL = "claude-opus-4-8"   # planning is a T2 judgment task; never downshifted
 
 PLAN_PROMPT = """You are decomposing a large task for this repo. Explore as
 needed, then output ONLY a JSON object (no prose, no code fences) with keys:
@@ -37,7 +37,8 @@ task, subtasks[], integration_check, risky_seams[]. Each subtask has:
 id, goal, depends_on[], files_touched[], parallelizable (bool), acceptance_check.
 
 CRITICAL: `acceptance_check` and `integration_check` must each be a RUNNABLE SHELL
-COMMAND that exits 0 iff the work is complete — e.g. "uv run pytest tests/test_x.py::test_y -q"
+COMMAND that exits 0 iff the work is complete — e.g.
+"uv run pytest tests/test_x.py::test_y -q"
 or "uv run python -c 'import mod; assert mod.f()'". Not prose. If a subtask cannot
 be reduced to a runnable check, say so in its acceptance_check as the literal
 string "MANUAL:" followed by why — the driver will stop and require a human.
@@ -79,8 +80,14 @@ def validate_plan(plan: dict) -> None:
                 raise ValueError(f"subtask missing '{k}': {s.get('id', s)}")
 
 
-def run(cmd, cwd=None, timeout=1800):
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+def run(cmd, cwd=None, timeout=1800, shell=False):
+    # VERIFIED (Phase 2, tests/test_plan.py): do_run calls this with shell=True
+    # for acceptance_check/integration_check (they're shell command strings, not
+    # argv lists). The wrapper never forwarded `shell` to subprocess.run, so
+    # every such call raised TypeError — never caught because nothing had
+    # exercised do_run's non-MANUAL path until these tests did.
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                          timeout=timeout, shell=shell)
 
 
 def state_dir(project: str) -> Path:
@@ -90,11 +97,14 @@ def state_dir(project: str) -> Path:
 
 
 def do_plan(task: str, project: str) -> None:
-    # NOTE: match this line to your CCR version's model-pinning interface.
-    proc = run(["ccr", "code", "-p", PLAN_PROMPT.format(task=task),
+    # Native `claude -p`, not a gateway: Phase 1 verified Claude Code accepts a
+    # bare model name/alias directly (docs/phase-1-findings.md). claude-code-router
+    # is gone. This draws the interactive Max wallet, same as `failup.py`'s
+    # default runner — planning and execution share one meter unless overridden.
+    proc = run(["claude", "-p", PLAN_PROMPT.format(task=task),
                 "--model", PLAN_MODEL], cwd=project)
     raw = proc.stdout.strip()
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     try:
         plan = extract_plan(raw)
         validate_plan(plan)
@@ -113,7 +123,6 @@ def do_plan(task: str, project: str) -> None:
 
 
 def toposort(subtasks: list[dict]) -> list[dict]:
-    by_id = {s["id"]: s for s in subtasks}
     done, order = set(), []
     while len(order) < len(subtasks):
         progressed = False
@@ -158,7 +167,7 @@ def do_run(plan_path: str, project: str) -> None:
 
         with log.open("a") as f:
             f.write(json.dumps({
-                "ts": datetime.now(timezone.utc).isoformat(), "id": st["id"],
+                "ts": datetime.now(UTC).isoformat(), "id": st["id"],
                 "guard_ok": guard_ok, "accept_ok": accept_ok,
                 "seconds": round(time.time() - t0, 1),
             }) + "\n")
@@ -169,7 +178,7 @@ def do_run(plan_path: str, project: str) -> None:
                   "continuing.", file=sys.stderr)
             sys.exit(1)
 
-    # Seam verification — the plan's own runnable integration_check, not a hardcoded suite.
+    # Seam verification — the plan's own integration_check, not a hardcoded suite.
     print("[run] all stages passed their acceptance checks. Running integration check.")
     if run(plan["integration_check"], cwd=project, shell=True).returncode != 0:
         print("[run] INTEGRATION CHECK FAILED. Stages passed individually but "
@@ -182,8 +191,10 @@ def do_run(plan_path: str, project: str) -> None:
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("plan"); p.add_argument("--task", required=True)
-    r = sub.add_parser("run"); r.add_argument("--plan", required=True)
+    p = sub.add_parser("plan")
+    p.add_argument("--task", required=True)
+    r = sub.add_parser("run")
+    r.add_argument("--plan", required=True)
     ap.add_argument("--project", default=os.getcwd())
     args = ap.parse_args()
     if args.cmd == "plan":

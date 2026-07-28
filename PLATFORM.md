@@ -4,8 +4,9 @@ A self-hostable, verifier-driven, sovereignty-aware agent control plane for
 Code, Science, Design, and Cowork — open-weight by default, benchmarked honestly
 against the subscription products it replaces (Claude, ChatGPT/Codex,
 Perplexity). This document is the capstone: it synthesizes the landscape survey
-(`routing-layer-landscape-2026.md`), the platform overview received from
-Perplexity, and everything in `specs/00–08`, and it supersedes them where they
+(`routing-layer-landscape-2026.md` — an external uploaded document, not in this
+repo), the platform overview received from
+Perplexity, and everything in `specs/00–09`, and it supersedes them where they
 conflict. Name is provisional; the ethos it should carry is public-infrastructure
 Open Access.
 
@@ -53,35 +54,51 @@ stub-LLM CI tests, nightly canary, Renovate custom datasource).
                      └──────────────┬────────────────────────────────────────────────┘
                                     ▼
                        LiteLLM proxy (auto + adaptive routing, cooldowns, groups)
-                        Tier0 rules · T1 local Ollama · T2 cheap open API ·
-                        T3 open coding models · T4 open general/long-context ·
-                        T5 sovereign HPC (vLLM) · T6 frontier (policy-gated)
+                        T0 deterministic (pins/overrides/allowlist) ·
+                        T1 local_fast (iMac) · T2 local_burst (MacBook, worker not RAM) ·
+                        T3 local_large (future 128GB node) ·
+                        T4 sovereign (Jetstream2/campus HPC — zero marginal cost) ·
+                        T5 remote_open (OpenRouter, open-weight allowlist) ·
+                        T6 remote_open_direct (Together/DeepInfra) ·
+                        T7 proprietary_payg (Anthropic/OpenAI/Perplexity — hybrid only,
+                        boundary-gated: verified open failure, documented specialist,
+                        or explicit override)
                                     ▼
                        OpenHands execution (Code/Science/Design/Cowork profiles,
                         sandboxes, subagent fleets, plan-first decomposer for
                         large tasks with runnable acceptance checks + human gate)
                                     ▼
                        VERIFIER (deterministic, lane-specific — §4): decides
-                        pass/fail; fail-up guard escalates one tier and retries
+                        pass/fail; fail-up guard escalates one tier and retries.
+                        A rung that is offline (not reachable) logs `unavailable`
+                        and is skipped — it is never scored as a model failure.
                                     ▼
                        Postgres outcome store ─▶ short-term: adaptive-router
-                        priors · long-term: RouteLLM offline retrain
+                        priors (unavailable events excluded — see §6) ·
+                        long-term: RouteLLM offline retrain
                        Langfuse traces ─▶ custom quality-adjusted metrics
 ```
 
-Escalation policy: **open-to-open first** (T1→T2→T3/T4→T5) before any
-open-to-closed step; T6 exists only in hybrid mode and is confirm-gated.
+Escalation policy: **open-to-open first** (T1→T2→T3→T4→T5→T6) before any
+open-to-closed step; T7 exists only in `hybrid` mode and is boundary-gated, never
+reached just because it would perform better. Full ladder, mode table, and the
+transition plan are in `REVISION-PLAN.md` and `specs/10`–`11`.
 
 ## 3. Modes
 
-| Mode | Constraint | Use |
-|---|---|---|
-| full-open | model_list contains no commercial endpoints | the platform under test; also offline/air-gapped |
-| hybrid | frontier allowed as verified fail-up ceiling only | daily driving; the practical config |
-| sovereign | all routes pinned local + institutional; commercial absent | clinical/regulated/EduCloud work |
+| Mode | Rungs | Constraint | Use |
+|---|---|---|---|
+| `open_weight_only` | T0–T6 | model_list contains no commercial endpoints; hosted-open (T5/T6) is allowed because the weights are downloadable, only the compute is rented | end state; also offline/air-gapped |
+| `hybrid` | T0–T7 | T7 allowed only as a boundary-gated fail-up ceiling (verified open failure / documented specialist / explicit override) — never a fixed subscription rung | **current mode.** Daily driving during the Scale-1 pilot |
+| `sovereign` | T0–T4 | all routes pinned local + institutional; commercial *and* hosted-open both absent | clinical/regulated/EduCloud student-facing lanes |
 
-Sensitive workspaces remain a *config variant with tiers absent*, never a
-runtime check.
+`sovereign` is stricter than `open_weight_only`: it excludes hosted-open
+infrastructure too, not just proprietary weights. Sensitive workspaces remain a
+*config variant with tiers absent*, never a runtime check. Mode is switched by
+swapping the LiteLLM config variant — no code change (`specs/10` §"target
+state"; `specs/11` Phase C). The flip from `hybrid` to `open_weight_only` is
+triggered by the `proprietary_displacement` metric (§5.3), not by calendar or
+preference.
 
 ## 4. Lane-specific verifiers (new — this is what makes "Science/Design" real)
 
@@ -150,7 +167,12 @@ published.
 7. human-fix edit distance (diff between agent output and what you actually
 kept); 8. discard/revert rate; 9. Science lane: rubric coverage %, citation
 resolvability %, hallucinated-citation rate; 10. tokens and energy proxy
-(tokens × model size class) for the sovereignty story.
+(tokens × model size class) for the sovereignty story; 11. **`proprietary_displacement`**
+— of currently-verified successes, what % would become ceiling-stalls if T7 were
+removed today (the `hybrid` → `open_weight_only` flip trigger, tracked weekly);
+12. **rescue efficiency** — proprietary dollars that converted a verified failure
+into a verified success, divided by total proprietary dollars spent (T7 must earn
+its place in flipped outcomes, not plausible-sounding output).
 
 **Honesty gates (platform invariants applied to the benchmark)**
 - **Non-inferiority first:** no arm may claim a cost/speed win unless its
@@ -190,11 +212,14 @@ respecting ToS (no multi-account, no scraping around limits).
 Verifier outcomes are the training signal: short-term, LiteLLM's adaptive
 router updates per-request-type priors (documented to stabilize after ~10
 requests per model); long-term, periodic RouteLLM-style retraining on the
-Postgres log. The benchmark suite doubles as the evaluation set for router
-retraining — the platform literally learns from the comparison against its
-competitors. Routing changes are versioned; a retrained router must beat the
-prior router on the held-out suite before deployment (same non-inferiority
-gate).
+Postgres log. **Availability events are excluded from this signal** — a rung
+being asleep or off-network (`unavailable`) is capacity noise, not a quality
+verdict, and must not poison priors or retraining data the way a real
+`model_failed` should (see `specs/10`/`11`, `failup.py`). The benchmark suite
+doubles as the evaluation set for router retraining — the platform literally
+learns from the comparison against its competitors. Routing changes are
+versioned; a retrained router must beat the prior router on the held-out suite
+before deployment (same non-inferiority gate).
 
 ## 7. What was missing and is now added (explicit)
 
@@ -243,6 +268,15 @@ gate).
   expire.
 
 ## 9. Build-order delta (appends to HANDOFF.md)
+
+**Phase 6a** (new, inserted before Phase 6 — see `REVISION-PLAN.md` §5): wire
+OpenRouter (allowlisted) + Together as LiteLLM deployment groups; wire T7
+(Anthropic/OpenAI/Perplexity PAYG) with per-task-class budgets and the
+boundary gate; split `unavailable` vs `model_failed` in `failup.py`; add
+displacement + rescue-efficiency reporting to `measure.py`; run the 12-task
+pilot cut (A1 vs A4) **while subscriptions are still live**, then cancel them.
+This is config + telemetry, not new architecture — it operationalizes modes
+already defined in §3.
 
 Phase 7: lane verifiers (science citation-resolver first) + open research
 stack. Phase 8: Postgres outcome store + Langfuse wiring; migrate measure.py

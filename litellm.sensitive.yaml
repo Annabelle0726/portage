@@ -21,19 +21,19 @@ model_list:
     litellm_params:
       model: ollama/qwen2.5-coder:32b
       api_base: http://localhost:11434
-    model_info: {tier: local, cost_class: free}
+    model_info: {commons_tier: local, cost_class: free}
 
   - model_name: judgment
     litellm_params:
       model: ollama/qwen2.5-coder:32b
       api_base: http://localhost:11434
-    model_info: {tier: local, cost_class: free}
+    model_info: {commons_tier: local, cost_class: free}
 
   - model_name: steward
     litellm_params:
       model: ollama/qwen2.5-coder:7b
       api_base: http://localhost:11434
-    model_info: {tier: local, cost_class: free}
+    model_info: {commons_tier: local, cost_class: free}
 
 router_settings:
   num_retries: 2

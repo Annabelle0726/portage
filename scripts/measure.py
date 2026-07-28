@@ -23,13 +23,13 @@ hand from `/usage` (see `snapshot`). Everything else is derived from the logs.
   measure.py snapshot --label baseline --opus-pct 12 --all-pct 34 --credit-left 82
   measure.py report   --since 2026-07-01 --until 2026-07-08   # one window
   measure.py report   --since 2026-07-01 --until 2026-07-08 \
-                      --vs-since 2026-07-08 --vs-until 2026-07-15   # baseline vs treatment
+                      --vs-since 2026-07-08 --vs-until 2026-07-15   # baseline vs treat
 """
 import argparse
 import json
 import os
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -42,7 +42,7 @@ def state(project: str) -> Path:
 def read_jsonl(path: Path):
     if not path.is_file():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def in_window(ts: str, since, until) -> bool:
@@ -56,7 +56,7 @@ def in_window(ts: str, since, until) -> bool:
 
 def snapshot(args) -> None:
     entry = {
-        "ts": datetime.now(timezone.utc).isoformat(), "label": args.label,
+        "ts": datetime.now(UTC).isoformat(), "label": args.label,
         "opus_pct": args.opus_pct, "all_pct": args.all_pct,
         "credit_left": args.credit_left,
     }
@@ -141,7 +141,7 @@ def _fmt(label, s: dict) -> str:
 
 def report(args) -> None:
     def parse(d):
-        return datetime.fromisoformat(d).replace(tzinfo=timezone.utc) if d else None
+        return datetime.fromisoformat(d).replace(tzinfo=UTC) if d else None
 
     a = summarize(args.project, parse(args.since), parse(args.until))
     print(_fmt("window", a))
@@ -156,7 +156,8 @@ def report(args) -> None:
                  f"stall {stall_a}% -> {stall_b}%: "
                  + ("QUALITY HELD — compare quota deltas for the efficiency win."
                     if stall_b <= stall_a
-                    else "STALLS ROSE — the ladder is too aggressive; do not claim a win.")))
+                    else "STALLS ROSE — the ladder is too aggressive; "
+                         "do not claim a win.")))
 
 
 # ---------------------------------------------------------------- downscale --
@@ -243,7 +244,7 @@ def interactive_use(project: str, use_log: str | None) -> dict:
 
 def downscale(args) -> None:
     def parse(d):
-        return datetime.fromisoformat(d).replace(tzinfo=timezone.utc) if d else None
+        return datetime.fromisoformat(d).replace(tzinfo=UTC) if d else None
 
     project = args.project
     since, until = parse(args.since), parse(args.until)
@@ -257,8 +258,10 @@ def downscale(args) -> None:
         return
 
     print(f"ladder (cheapest first): {' -> '.join(ladder)}")
-    print(f"automated tasks in window: {n}"
-          f"{'   (thin data — treat everything below as directional)' if n < THIN_DATA else ''}\n")
+    thin = ""
+    if n < THIN_DATA:
+        thin = "   (thin data — treat everything below as directional)"
+    print(f"automated tasks in window: {n}{thin}\n")
 
     # --- utilization -------------------------------------------------------
     resolved = [t for t in tasks if t["win_meter"]]
@@ -338,11 +341,14 @@ def main():
     s.add_argument("--credit-left", type=float, help="separate credit remaining")
 
     r = sub.add_parser("report")
-    r.add_argument("--since"); r.add_argument("--until")
-    r.add_argument("--vs-since"); r.add_argument("--vs-until")
+    r.add_argument("--since")
+    r.add_argument("--until")
+    r.add_argument("--vs-since")
+    r.add_argument("--vs-until")
 
     d = sub.add_parser("downscale", help="which subscription lane could you drop?")
-    d.add_argument("--since"); d.add_argument("--until")
+    d.add_argument("--since")
+    d.add_argument("--until")
     d.add_argument("--tiers", help="ladder file; auto-detected if omitted")
     d.add_argument("--use-log", help="herdr-meters use-log.jsonl (interactive lanes)")
 

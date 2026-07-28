@@ -18,7 +18,7 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -45,7 +45,7 @@ def main() -> None:
     state_dir.mkdir(parents=True, exist_ok=True)
     backups.mkdir(parents=True, exist_ok=True)
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     trigger = payload.get("trigger", "unknown")  # "manual" | "auto"
 
     # Back up the transcript so a bad compact is never lossy.
@@ -64,7 +64,8 @@ def main() -> None:
     log = sh("git", "-C", str(project), "log", "-5", "--oneline")
 
     state = f"""# Project state snapshot
-_Written by pre_compact_snapshot.py at {stamp} (trigger: {trigger}). Deterministic; no model was called._
+_Written by pre_compact_snapshot.py at {stamp} (trigger: {trigger})._
+_Deterministic; no model was called._
 
 ## Git
 - branch: `{branch or "unknown"}`
