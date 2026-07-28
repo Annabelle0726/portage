@@ -3,8 +3,8 @@
 Phase 1 found that a bad `model_info` key (the reserved `tier` field) makes
 LiteLLM silently drop every offending deployment while `/health/liveliness`
 still reports the proxy healthy — a proxy that answers healthy and routes
-nothing is the worst failure mode this project can have. `commons_tier` fixed
-that specific defect; this test guards against the *class* of regression by
+nothing is the worst failure mode this project can have. `commons_tier` — renamed `portage_tier` with the settled module name
+(2026-07-28, CW02 §2.2) — fixed that specific defect; this test guards against the *class* of regression by
 asserting the actual deployment count a config loads with, not just that the
 YAML parses.
 

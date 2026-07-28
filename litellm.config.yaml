@@ -26,34 +26,34 @@ model_list:
   # ---- capability rungs: named individually for the fail-up ladder ----------
   - model_name: local-small
     litellm_params:
-      model: ollama/qwen2.5-coder:7b
+      model: ollama_chat/qwen2.5-coder:7b
       api_base: http://localhost:11434
-    model_info: {commons_tier: local, cost_class: free}
+    model_info: {portage_tier: local, cost_class: free}
 
   - model_name: local-big
     litellm_params:
-      model: ollama/qwen2.5-coder:32b
+      model: ollama_chat/qwen2.5-coder:32b
       api_base: http://localhost:11434       # or the warm iMac over Tailscale
-    model_info: {commons_tier: local, cost_class: free}
+    model_info: {portage_tier: local, cost_class: free}
 
   - model_name: sovereign-work
     litellm_params:
       model: openai/gpt-oss-120b              # OpenAI-compatible HPC endpoint
       api_base: os.environ/SOVEREIGN_BASE_URL # Jetstream2 / campus HPC / vLLM
       api_key: os.environ/SOVEREIGN_TOKEN
-    model_info: {commons_tier: sovereign, cost_class: free}
+    model_info: {portage_tier: sovereign, cost_class: free}
 
   - model_name: sonnet
     litellm_params:
       model: anthropic/claude-sonnet-5
       api_key: os.environ/ANTHROPIC_API_KEY
-    model_info: {commons_tier: frontier, cost_class: metered}
+    model_info: {portage_tier: frontier, cost_class: metered}
 
   - model_name: opus
     litellm_params:
       model: anthropic/claude-opus-4-8
       api_key: os.environ/ANTHROPIC_API_KEY
-    model_info: {commons_tier: frontier, cost_class: metered, scarce: true}
+    model_info: {portage_tier: frontier, cost_class: metered, scarce: true}
 
   # ---- work: availability-failover pool over the local/sovereign/frontier
   # rungs above, PLUS a cheap open-weight API tier that is deliberately NOT a
@@ -61,10 +61,10 @@ model_list:
   # only as a cost fallback within this group. ------------------------------
   - model_name: work
     litellm_params:
-      model: ollama/qwen2.5-coder:32b
+      model: ollama_chat/qwen2.5-coder:32b
       api_base: http://localhost:11434
       order: 1                                # free, private, always first
-    model_info: {commons_tier: local, cost_class: free}
+    model_info: {portage_tier: local, cost_class: free}
 
   - model_name: work
     litellm_params:
@@ -72,21 +72,21 @@ model_list:
       api_base: os.environ/SOVEREIGN_BASE_URL
       api_key: os.environ/SOVEREIGN_TOKEN
       order: 2                                # sovereign, zero marginal cost
-    model_info: {commons_tier: sovereign, cost_class: free}
+    model_info: {portage_tier: sovereign, cost_class: free}
 
   - model_name: work
     litellm_params:
       model: openrouter/deepseek/deepseek-chat
       api_key: os.environ/OPENROUTER_API_KEY
       order: 3                                # cheap open-weight API
-    model_info: {commons_tier: open_api, cost_class: metered}
+    model_info: {portage_tier: open_api, cost_class: metered}
 
   - model_name: work
     litellm_params:
       model: anthropic/claude-sonnet-5
       api_key: os.environ/ANTHROPIC_API_KEY
       order: 4                                # frontier: hybrid mode only
-    model_info: {commons_tier: frontier, cost_class: metered}
+    model_info: {portage_tier: frontier, cost_class: metered}
 
   # ---- judgment: planning, review, milestone gates -------------------------
   # Deliberately NOT a cheap-first ladder. A bad plan poisons every stage under
@@ -96,7 +96,7 @@ model_list:
       model: anthropic/claude-opus-4-8
       api_key: os.environ/ANTHROPIC_API_KEY
       order: 1
-    model_info: {commons_tier: frontier, cost_class: metered, scarce: true}
+    model_info: {portage_tier: frontier, cost_class: metered, scarce: true}
 
   - model_name: judgment
     litellm_params:
@@ -104,7 +104,7 @@ model_list:
       api_base: os.environ/SOVEREIGN_BASE_URL
       api_key: os.environ/SOVEREIGN_TOKEN
       order: 2                                # open fallback for full-open mode
-    model_info: {commons_tier: sovereign, cost_class: free}
+    model_info: {portage_tier: sovereign, cost_class: free}
 
   # ---- steward: triage, classify, route, adapt, propose checks -------------
   # Always local. Free, private, warm. Never routed off-machine. Same physical
@@ -112,9 +112,9 @@ model_list:
   # (classification, not coding capability) that could be tuned independently.
   - model_name: steward
     litellm_params:
-      model: ollama/qwen2.5-coder:7b
+      model: ollama_chat/qwen2.5-coder:7b
       api_base: http://localhost:11434
-    model_info: {commons_tier: local, cost_class: free}
+    model_info: {portage_tier: local, cost_class: free}
 
 router_settings:
   routing_strategy: simple-shuffle    # `order` governs; shuffle breaks ties

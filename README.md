@@ -1,6 +1,7 @@
-# Commons — meter- and sovereignty-aware agent control plane
+# Portage — meter- and sovereignty-aware agent control plane
 
-*(working name; Apache-2.0 recommended)*
+*(the EduCloud inference plane; prior working name "Commons" — see the
+umbrella's `SYSTEM.md` §1 for the name register)*
 
 A self-hostable control plane for coding, research, design, and multi-agent
 work. Open-weight by default, escalating to metered models only when a

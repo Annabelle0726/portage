@@ -57,9 +57,16 @@ Both were drift, and both were fixed in `litellm.config.yaml`:
    Our semantic values (`local`, `sovereign`, `open_api`, `frontier`) failed
    schema validation — and LiteLLM *silently dropped every offending
    deployment* while still reporting the proxy healthy. All 7 deployments
-   vanished and `/v1/models` returned an empty list. The key is renamed to
-   `commons_tier` in both configs. **Treat a healthy-but-empty `/model/info`
+   vanished and `/v1/models` returned an empty list. The key was renamed to
+   `commons_tier` in both configs — and again to `portage_tier` on 2026-07-28
+   (CW02 §2.2) with the module's settled name, gated by
+   `tests/test_litellm_readiness.py`. **Treat a healthy-but-empty `/model/info`
    as the signature of this class of bug.**
+
+3. **2026-07-28 (CW-03):** local routes moved `ollama/` → `ollama_chat/` per
+   the build-plan research (better chat/tool handling through the proxy;
+   herdr-build-plan pitfall #1). Readiness-test verified; the live per-model
+   tool-call smoke test lands at HB-0.
 
 Also note: `success_callback: ["langfuse"]` is commented out until Phase 8
 provisions Langfuse, and `database_url` likewise, so the proxy runs today.
@@ -107,6 +114,10 @@ all three files share one vocabulary (see "Rungs vs groups"). Codex targets in
 because the CLI is unverified (Phase 3).
 
 ## Drift watch
+
+**Due now (2026-07-28):** Kimi K3 weights landed July 27 — re-check the hosted
+cached-edits pin (herdr-build-plan; LINE-P rev 2) before HB-0 locks registry
+pins.
 
 Renovate with a custom HTTP datasource (HANDOFF Phase 5) should watch the
 Claude Code releases feed and this file's model IDs, so a rename opens a PR

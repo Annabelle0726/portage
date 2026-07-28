@@ -28,7 +28,9 @@ def test_sensitive_config_declares_only_local_models():
     text = (REPO / "litellm.sensitive.yaml").read_text(encoding="utf-8")
     models = MODEL_RE.findall(text)
     assert models, "sensitive config declares no models at all"
-    offenders = [m for m in models if not m.startswith("ollama/")]
+    # ollama_chat/ is the same local server via LiteLLM's chat route (CW-03,
+    # 2026-07-28; herdr-build-plan pitfall #1) — equally local by construction.
+    offenders = [m for m in models if not m.startswith(("ollama/", "ollama_chat/"))]
     assert not offenders, f"non-local model in the sensitive config: {offenders}"
 
 

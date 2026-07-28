@@ -1,4 +1,4 @@
-# PLATFORM.md — final definition (working name: **Commons**)
+# PLATFORM.md — final definition: **Portage**
 
 A self-hostable, verifier-driven, sovereignty-aware agent control plane for
 Code, Science, Design, and Cowork — open-weight by default, benchmarked honestly
@@ -7,7 +7,8 @@ Perplexity). This document is the capstone: it synthesizes the landscape survey
 (`routing-layer-landscape-2026.md` — an external uploaded document, not in this
 repo), the platform overview received from
 Perplexity, and everything in `specs/00–09`, and it supersedes them where they
-conflict. Name is provisional; the ethos it should carry is public-infrastructure
+conflict. The name is settled: **Portage** (EduCloud umbrella `SYSTEM.md` §1;
+prior working name Commons). The ethos it carries is public-infrastructure
 Open Access.
 
 ---
@@ -127,7 +128,7 @@ Code above all, Codex, and Perplexity — with results a skeptic would accept.
 "Open platform vs Claude Code" confounds **harness** with **model**. So the
 core experiment is a 2×2 factorial, per task:
 
-| | our harness (Commons) | native harness |
+| | our harness (Portage) | native harness |
 |---|---|---|
 | **open model** | A1 (the platform) | A3 Claude Code → LiteLLM → open model |
 | **frontier model** | A2 hybrid-ablation | A4 native Claude Code / Codex |
