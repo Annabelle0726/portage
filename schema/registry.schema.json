@@ -43,7 +43,7 @@
         },
         "endpoint": {
           "type": ["string", "null"],
-          "description": "Required for provider_route: ollama_chat. An os.environ/ reference to a Tailscale hostname (never a literal hostname or IP, never a secret value) so the registry stays portable across machines. Enforced in render_config.py, not pure JSON Schema, since it's conditional on provider_route."
+          "description": "Required for provider_route: ollama_chat; optional and honored for provider_route: openai (an institution-hosted vLLM base URL at Scale 2). Always an os.environ/ reference — never a literal hostname, IP or URL, and never a secret value — so the registry stays portable across machines and deployments. Env var names are per-deployment namespaces: SOVEREIGN_BASE_URL resolves to the Jetstream2 endpoint in the EduCloud deployment and is parked in Line P's. Enforced in render_config.py, not pure JSON Schema, since it's conditional on provider_route."
         },
         "order": {
           "type": ["integer", "null"],
@@ -90,7 +90,7 @@
         },
         "enabled": {
           "type": "boolean",
-          "description": "false entries are validated and kept in the registry but excluded from the rendered model_list (HB-0: proprietary_code/proprietary_research exist disabled so HB-2's rescue path flips a flag instead of adding config)."
+          "description": "false entries still render into model_list, carrying `enabled: false` in model_info — they are NOT excluded. HB-0 Gate 2 requires /v1/models to list every alias the deployment declares, so dropping a disabled row would hide an alias entirely; downstream tooling (failup.py, herdr-meters) filters on model_info.enabled instead. proprietary_code/proprietary_research exist disabled so HB-2's rescue path flips a flag rather than adding config. To make a deployment genuinely unreachable — the Scale-2 student lane's requirement — REMOVE the row from that lane's registry; `enabled: false` is not an isolation mechanism."
         }
       },
       "allOf": [

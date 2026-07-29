@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# scale2.educloud.student.registry.yaml — the STUDENT lane at Scale 2.
+#
+# This is the enforcing half of the EduCloud profile. Line E's roadmap requires
+# student lanes to be "sovereign by absence," and CC-P2's data-destinations
+# policy states the mechanism: "A regulated workspace runs against a
+# configuration whose model list contains only local deployments, so a misroute
+# is impossible by construction."
+#
+# That is implemented here literally. This registry contains ONLY institutional
+# sovereign deployments. There is no OpenRouter row, no Anthropic row, no
+# Perplexity row — not disabled, ABSENT. A student-lane request for
+# `proprietary_code` does not get quietly downgraded or silently routed; it
+# fails at the proxy with an unknown-model error, loudly, because no such
+# deployment exists in the configuration this lane runs against.
+#
+# Consequence, stated so it is not mistaken for an oversight: this profile
+# renders FIVE aliases, not seven. Scale 1's "exactly seven aliases in
+# /v1/models" invariant (HB-0 Gate 2) is a property of the Scale-1 deployment,
+# not of the contract. At Scale 2 the seven-alias set is the *vocabulary*;
+# which of them a given lane can reach is the policy. See scale2.educloud.md.
+#
+# Data classification: `personal_sensitive`, NOT `regulated` — deliberately.
+# CC-P2's policy is explicit that institutional HPC is sovereign but *shared*
+# ("administrators can view interactions") and that identifiable student
+# records never leave local storage. Student coursework reaches this tier
+# already de-identified, carrying only the platform's opaque
+# {course, assignment, student} attribution labels. Identifiable-record
+# processing has no deployment at E0 and must not acquire one by accident —
+# that absence is itself the enforcement. Flagged for sign-off in
+# scale2.educloud.md §3.
+#
+# Endpoints are `os.environ/` references, never literals. SOVEREIGN_BASE_URL
+# and SOVEREIGN_TOKEN resolve per-deployment: on the Waypoint host they point
+# at the Jetstream2 vLLM endpoint under the ACCESS allocation; in Line P's
+# private deployment they are parked and unset. Same names, different values,
+# no engine change — which is why the Scale-2 step stays a config diff.
+#
+# TODO(allocation): every row below is a deployment CONTRACT, not a guess.
+# vLLM serves under whatever `--served-model-name` it is launched with, so
+# these names are ours to define; the JS2 launch must match them exactly.
+# Confirm max_context against the served context window and replace the
+# UNVERIFIED licenses with the actual weights' licenses once the allocation
+# is live and the models are chosen.
+
+models:
+  - alias: classifier
+    provider_route: openai
+    model_id: portage-classifier
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    open_weight: true
+    license: UNVERIFIED        # TODO(allocation): set from the served weights
+    max_context: 32768         # TODO(allocation): confirm against vLLM launch
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: code_small
+    provider_route: openai
+    model_id: portage-code-small
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 32768
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: code_large
+    provider_route: openai
+    model_id: portage-code-large
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 131072
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: research_synthesis
+    provider_route: openai
+    model_id: portage-research
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 131072
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: embedding
+    provider_route: openai
+    model_id: portage-embedding
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 8192
+    supports_tools: false
+    supports_json: false
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true

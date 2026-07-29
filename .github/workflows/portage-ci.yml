@@ -27,6 +27,29 @@ jobs:
           --config-name scale1.example.yaml
           --model-list-name scale1.example.model_list.yaml
           --check
+      # Both EduCloud lanes re-render too. The student lane especially: its
+      # generated model_list is the artifact that proves no commercial route
+      # reaches a student, so a hand-edit to it must fail the build.
+      - name: Re-render check (Scale 2) — EduCloud student lane
+        run: >
+          uv run --extra config python src/portage/render_config.py
+          --registry config/profiles/scale2.educloud.student.registry.yaml
+          --settings config/profiles/scale2.educloud.settings.yaml
+          --schema schema/registry.schema.json
+          --out-dir config/profiles
+          --config-name scale2.educloud.student.yaml
+          --model-list-name scale2.educloud.student.model_list.yaml
+          --check
+      - name: Re-render check (Scale 2) — EduCloud staff lane
+        run: >
+          uv run --extra config python src/portage/render_config.py
+          --registry config/profiles/scale2.educloud.staff.registry.yaml
+          --settings config/profiles/scale2.educloud.settings.yaml
+          --schema schema/registry.schema.json
+          --out-dir config/profiles
+          --config-name scale2.educloud.staff.yaml
+          --model-list-name scale2.educloud.staff.model_list.yaml
+          --check
 
   # ---- Automated review: only runs if the gate is green. ----
   review:

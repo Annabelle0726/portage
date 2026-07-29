@@ -1,0 +1,178 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# scale2.educloud.staff.registry.yaml — the INSTRUCTOR / STAFF lane at Scale 2.
+#
+# Same five sovereign deployments as the student lane, at `order: 1` — sovereign
+# is the default here too, not merely available. What this lane adds is the
+# hybrid tail Line E's roadmap allows "by instructor policy": a hosted
+# open-weight fallback at `order: 2` on the two aliases where a sovereign
+# queue delay actually blocks work, and the two proprietary rescue rows
+# present-but-disabled.
+#
+# The disabled rows follow Line P's established pattern exactly: they exist so
+# that enabling proprietary rescue is a flag flip with an audit trail, never a
+# config addition made under time pressure. They render into /v1/models (HB-0's
+# renderer carries `enabled` into model_info rather than dropping the entry) so
+# the alias vocabulary stays complete and a caller gets a clear
+# deployment-disabled signal instead of an unknown-model error.
+#
+# This lane never sees student records. The attribution labels that flow with
+# instructor-facing requests are the same opaque {course, assignment, student}
+# identifiers used everywhere else in the platform, so the hosted-open tail
+# receives no identifiable content — which is what lets a `public` ceiling on
+# those two rows be honest rather than optimistic.
+#
+# The student lane is a SEPARATE registry, not a filtered view of this one.
+# That is the point: isolation by config absence cannot be defeated by a
+# filtering bug, because the student configuration never contains the rows in
+# the first place. See scale2.educloud.student.registry.yaml.
+#
+# TODO(allocation): the five sovereign rows carry the same deployment contract
+# as the student lane and must stay byte-identical to it in model_id, endpoint,
+# and max_context — they are the same vLLM deployments, addressed from a second
+# configuration. tests/test_scale2_profile.py asserts that.
+
+models:
+  # ---- Sovereign tier: institutional Jetstream2 vLLM, order 1 throughout ----
+  - alias: classifier
+    provider_route: openai
+    model_id: portage-classifier
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    order: 1
+    open_weight: true
+    license: UNVERIFIED        # TODO(allocation): set from the served weights
+    max_context: 32768         # TODO(allocation): confirm against vLLM launch
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: code_small
+    provider_route: openai
+    model_id: portage-code-small
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    order: 1
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 32768
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: code_large
+    provider_route: openai
+    model_id: portage-code-large
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    order: 1
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 131072
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: research_synthesis
+    provider_route: openai
+    model_id: portage-research
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    order: 1
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 131072
+    supports_tools: true
+    supports_json: true
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: embedding
+    provider_route: openai
+    model_id: portage-embedding
+    endpoint: os.environ/SOVEREIGN_BASE_URL
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 8192
+    supports_tools: false
+    supports_json: false
+    data_classification: personal_sensitive
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  # ---- Hosted open-weight tail, order 2, instructor policy only ------------
+  # Only on the two aliases where an HPC queue delay actually blocks an
+  # instructor mid-task. Deliberately NOT on classifier (cheap, latency-
+  # sensitive, and a queue delay there is tolerable) or embedding (changing
+  # the embedder mid-corpus invalidates the vector store — see HB-3/S2).
+  - alias: code_large
+    provider_route: openrouter
+    model_id: z-ai/glm-5.2
+    order: 2
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 1048576
+    supports_tools: true
+    supports_json: true
+    data_classification: public
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  - alias: research_synthesis
+    provider_route: openrouter
+    model_id: deepseek/deepseek-v4-flash
+    order: 2
+    open_weight: true
+    license: UNVERIFIED
+    max_context: 1048576
+    supports_tools: true
+    supports_json: true
+    data_classification: public
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: true
+
+  # ---- Proprietary rescue: registered, disabled, flag-flip to enable -------
+  - alias: proprietary_code
+    provider_route: anthropic
+    model_id: claude-sonnet-5
+    open_weight: false
+    license: Proprietary
+    max_context: 200000
+    supports_tools: true
+    supports_json: true
+    data_classification: public
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: false
+
+  - alias: proprietary_research
+    provider_route: perplexity
+    model_id: sonar-deep-research
+    open_weight: false
+    license: Proprietary
+    max_context: 128000
+    supports_tools: false
+    supports_json: false
+    data_classification: public
+    benchmark_version: null
+    bfclv3: null
+    ifeval: null
+    enabled: false
