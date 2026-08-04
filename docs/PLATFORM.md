@@ -1,5 +1,14 @@
 # PLATFORM.md — final definition: **Portage**
 
+> **Roster banner — 2026-08-04.** The provider ladder and hosted-model
+> occupants below are **superseded by `CW-04-model-roster.md`**
+> (`portage-local/docs/reports/`). CW-04 §2.2 removes OpenRouter from the
+> ladder entirely — it becomes a non-routable failover path, not a rung — and
+> §2.3 changes the occupant of every hosted tier. The rewrite that lands this
+> is CW-03 group 4, which **has not been performed**; CW-02 §6 pins it to a
+> top-model gate review. Do not act on the provider content below without
+> reading CW-04 and `CW04-HB0-drift.md` first.
+
 A self-hostable, verifier-driven, sovereignty-aware agent control plane for
 Code, Science, Design, and Cowork — open-weight by default, benchmarked honestly
 against the subscription products it replaces (Claude, ChatGPT/Codex,

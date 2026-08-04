@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+> **Roster banner — 2026-08-04.** Provider/model content in
+> `REVISION-PLAN.md`, `docs/PLATFORM.md` and `docs/specs/02`, `08`, `10`, `11`
+> is superseded by `CW-04-model-roster.md`
+> (`portage-local/docs/reports/`). The rewrite has not been performed. Read
+> CW-04 and `CW04-HB0-drift.md` before acting on any ladder or model name.
+
 Constitution for this repo. Loaded every turn — kept deliberately lean, because
 everything here re-sends on each turn and taxes the shared pool. Situational
 guidance lives in skills (`.claude/skills/`), not here.
