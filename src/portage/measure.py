@@ -88,6 +88,36 @@ def snapshot(args) -> None:
           f"opus={args.opus_pct}% all={args.all_pct}% credit_left={args.credit_left}")
 
 
+# ── WHAT THIS MODULE CANNOT SEE, AND WHAT THAT MEANS FOR A FUTURE METRIC ────
+# measure.py reads `failup-log.jsonl` only — the ladder failup.py walks, whose
+# rungs are named in `.claude/tiers.json` (local-small, sovereign-work, sonnet,
+# opus). It has NO visibility into `registry.yaml`'s alias-based LiteLLM
+# deployments (classifier, code_small, code_large, research_synthesis, ...).
+# The two are structurally separate systems: failup.py never opens
+# registry.yaml, which is why the Kimi K3 Fable-tier row cannot appear in
+# anything computed below today.
+#
+# That changes the moment someone measures registry-alias traffic directly.
+# `proprietary_displacement` is named in the platform docs but implemented
+# nowhere; if it — or any future metric over registry-alias traffic — is
+# built, it MUST exclude from any "open-ladder win":
+#
+#   * every row with `fable_tier: true` (today: Kimi K3 on code_large and
+#     research_synthesis), and
+#   * every row whose `license_family` is outside the `open_weight_only`
+#     allowlist — published weights do not imply an acceptable license, which
+#     is the whole reason license_family exists (CW-04 §2.5).
+#
+# Both exclusions are needed, and the second is not implied by the first. A
+# K3 rescue is reachable in principle through LiteLLM's own retry/fallback
+# even while `enabled: false` — the declarative gate narrows exposure but does
+# not close it (P6-report §1, "the honest limit of a declarative gate"). Left
+# uncounted-for, such a rescue would misreport as an open-weight success and
+# flatter exactly the number the displacement claim rests on.
+#
+# Sources: CW-04 §2.5 and P7-report's ambiguity note, both in
+# `portage-local/docs/reports/`. Mirrored in registry.schema.json's
+# `license_family` description — keep the two in sync if either changes.
 def summarize(project: str, since, until) -> dict:
     """The headline numbers, over ADMISSIBLE runs only.
 

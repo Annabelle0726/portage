@@ -61,7 +61,7 @@
         },
         "license_family": {
           "type": "string",
-          "description": "CW-04 §2.5 (C6). The allowlist class `open_weight_only` tests against. `open_weight: true` is NOT sufficient on its own — Kimi K3 ships public weights under a bespoke grant with a revenue-triggered separate-agreement clause and a UI attribution mandate, so weight availability does not imply an acceptable license. That falsification is why this field exists. `unverified` is the honest value when the grant has not been read; it is deliberately NOT allowlist-eligible, so an unread license fails closed rather than passing on the strength of published weights.",
+          "description": "CW-04 §2.5 (C6). The allowlist class `open_weight_only` tests against. `open_weight: true` is NOT sufficient on its own — Kimi K3 ships public weights under a bespoke grant with a revenue-triggered separate-agreement clause and a UI attribution mandate, so weight availability does not imply an acceptable license. That falsification is why this field exists. `unverified` is the honest value when the grant has not been read; it is deliberately NOT allowlist-eligible, so an unread license fails closed rather than passing on the strength of published weights. Any future consumer computing an \"open-ladder win\" or displacement-style metric over this registry must exclude both `fable_tier: true` rows and rows whose `license_family` is outside the allowlist — see the block comment above `summarize()` in `src/portage/measure.py`, which records the requirement in full.",
           "enum": [
             "permissive", "weak_copyleft", "strong_copyleft",
             "non_permissive", "proprietary", "unverified"
