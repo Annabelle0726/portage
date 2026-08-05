@@ -41,6 +41,7 @@ models:
     order: 1
     open_weight: true
     license: UNVERIFIED        # TODO(allocation): set from the served weights
+    license_family: unverified
     max_context: 32768         # TODO(allocation): confirm against vLLM launch
     supports_tools: true
     supports_json: true
@@ -57,6 +58,7 @@ models:
     order: 1
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 32768
     supports_tools: true
     supports_json: true
@@ -73,6 +75,7 @@ models:
     order: 1
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 131072
     supports_tools: true
     supports_json: true
@@ -89,6 +92,7 @@ models:
     order: 1
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 131072
     supports_tools: true
     supports_json: true
@@ -104,6 +108,7 @@ models:
     endpoint: os.environ/SOVEREIGN_BASE_URL
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 8192
     supports_tools: false
     supports_json: false
@@ -124,6 +129,7 @@ models:
     order: 2
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 1048576
     supports_tools: true
     supports_json: true
@@ -139,6 +145,7 @@ models:
     order: 2
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 1048576
     supports_tools: true
     supports_json: true
@@ -154,6 +161,7 @@ models:
     model_id: claude-sonnet-5
     open_weight: false
     license: Proprietary
+    license_family: proprietary
     max_context: 200000
     supports_tools: true
     supports_json: true
@@ -168,6 +176,7 @@ models:
     model_id: sonar-deep-research
     open_weight: false
     license: Proprietary
+    license_family: proprietary
     max_context: 128000
     supports_tools: false
     supports_json: false

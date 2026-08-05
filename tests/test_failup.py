@@ -125,3 +125,43 @@ def test_availability_and_capability_failures_are_distinguishable(
     # The availability attempt must never have reached the deterministic gate,
     # so it left no trace in the tree for the reset to even need to undo.
     assert entries[0]["reason"] != "empty-diff"
+
+
+# ------------------------------------------- CC-P6: the fable tier is not here --
+# The gate CC-P6 §2 asks about does not belong in this file, and these two tests
+# exist to record WHY rather than to leave the absence looking like an omission.
+#
+# The guard's ladder is FILE-DRIVEN from .claude/tiers.json. It never opens
+# registry.yaml, and the two vocabularies do not overlap: the tiers files ship
+# rungs like `local-small` / `sovereign-work` / `sonnet` / `opus`, while the
+# registry ships the seven capability aliases. A `fable_tier: true` flag on a
+# registry row is therefore invisible to this module by construction — ordinary
+# escalation here cannot select a registry row in the first place, so there is
+# nothing in the guard to gate. The fable-tier gate is declarative, in the
+# registry and its rendered model_info, and is tested in test_render_config.py
+# (TestFableTierGate). See the CC-P6 report §1.
+
+REGISTRY_ALIASES = frozenset({
+    "classifier", "code_small", "code_large", "research_synthesis",
+    "embedding", "proprietary_code", "proprietary_research",
+})
+
+
+def test_escalation_ladder_is_tiers_driven_not_registry_driven(failup, tmp_path):
+    # The shipped ladders, verbatim. If a future change makes a registry alias a
+    # rung, this fails and the fable-tier gate has to move into the guard.
+    for rungs in (["local-small", "local-big", "sonnet",
+                   {"model": "opus", "effort": "high"}],
+                  ["local-small", "sovereign-work", "sonnet",
+                   {"model": "opus", "effort": "high"}]):
+        p = tmp_path / "tiers.json"
+        p.write_text(json.dumps({"_comment": "as shipped", "tiers": rungs}))
+        models = {t["model"] for t in failup.load_tiers(str(tmp_path), str(p))}
+        assert models & REGISTRY_ALIASES == set()
+
+
+def test_a_missing_tiers_file_falls_back_to_models_not_aliases(failup, tmp_path):
+    # Even the no-config path names models, never registry aliases — so there is
+    # no route by which a fable_tier row becomes reachable from this module.
+    tiers = failup.load_tiers(str(tmp_path), "does-not-exist.json")
+    assert {t["model"] for t in tiers} & REGISTRY_ALIASES == set()

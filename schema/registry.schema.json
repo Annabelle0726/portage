@@ -19,7 +19,7 @@
       "additionalProperties": false,
       "required": [
         "alias", "provider_route", "model_id", "open_weight", "license",
-        "max_context", "supports_tools", "supports_json",
+        "license_family", "max_context", "supports_tools", "supports_json",
         "data_classification", "enabled"
       ],
       "properties": {
@@ -33,8 +33,11 @@
         },
         "provider_route": {
           "type": "string",
-          "description": "The LiteLLM provider prefix this entry renders under (e.g. 'ollama_chat/<model_id>'). 'ollama_chat', never 'ollama' — HB-0 fixed decision.",
-          "enum": ["ollama_chat", "openrouter", "anthropic", "perplexity", "openai"]
+          "description": "The LiteLLM provider prefix this entry renders under (e.g. 'ollama_chat/<model_id>'). 'ollama_chat', never 'ollama' — HB-0 fixed decision. 'deepseek', 'morph' and 'moonshot' are native LiteLLM providers, verified present in the pinned v1.93.0 (api.deepseek.com/beta, api.morphllm.com/v1, api.moonshot.ai/v1) — first-party routes, per CW-04 §2.2's serving-precision rule. NOTE the two OpenAI-shaped routes are NOT interchangeable: 'openai' is the Scale-2 institution-hosted vLLM path (SOVEREIGN_BASE_URL/SOVEREIGN_TOKEN), while 'openai_direct' is first-party api.openai.com (OPENAI_API_KEY, no api_base). Rendering GPT-5.6 Sol under 'openai' would have pointed it at the sovereign endpoint and signed it with the sovereign token.",
+          "enum": [
+            "ollama_chat", "openrouter", "anthropic", "perplexity", "openai",
+            "openai_direct", "deepseek", "morph", "moonshot"
+          ]
         },
         "model_id": {
           "type": "string",
@@ -54,7 +57,15 @@
         "license": {
           "type": "string",
           "minLength": 1,
-          "description": "The model's license class (e.g. 'Apache-2.0', 'MIT'). Use the literal string 'UNVERIFIED' when the license hasn't been confirmed yet — never guess a specific license name, since this field feeds the open-weight allowlist check (specs/09 R2)."
+          "description": "The model's license class (e.g. 'Apache-2.0', 'MIT'). Use the literal string 'UNVERIFIED' when the license hasn't been confirmed yet — never guess a specific license name. This field is the human-readable grant name; the machine-checkable gate is `license_family`."
+        },
+        "license_family": {
+          "type": "string",
+          "description": "CW-04 §2.5 (C6). The allowlist class `open_weight_only` tests against. `open_weight: true` is NOT sufficient on its own — Kimi K3 ships public weights under a bespoke grant with a revenue-triggered separate-agreement clause and a UI attribution mandate, so weight availability does not imply an acceptable license. That falsification is why this field exists. `unverified` is the honest value when the grant has not been read; it is deliberately NOT allowlist-eligible, so an unread license fails closed rather than passing on the strength of published weights.",
+          "enum": [
+            "permissive", "weak_copyleft", "strong_copyleft",
+            "non_permissive", "proprietary", "unverified"
+          ]
         },
         "max_context": { "type": "integer", "minimum": 1 },
         "supports_tools": { "type": "boolean" },
@@ -66,6 +77,19 @@
         "stream_tools": {
           "type": "boolean",
           "description": "Optional. Set to false by HB-0 Step 4 (tests/test_toolcalls.py) if this deployment's tool calls work non-streaming but fail to reconstruct correctly under stream: true. Absent means untested or known-good under both."
+        },
+        "effort": {
+          "type": ["string", "null"],
+          "description": "Optional Lane-B counterpart to models.json's Lane-A `effort`. Renders to LiteLLM's `reasoning_effort` param. Null or absent means no effort control — the flag is omitted entirely rather than sent as a default, matching failup.py's tiers-file rule that 'default' is not a valid effort. Lets one checkpoint occupy two rungs at different reasoning budgets (CC-P6 §3: DeepSeek V4 Flash, then the same checkpoint at max effort, before the fable tier). Caveat for whoever boots this: litellm_settings.yaml sets drop_params: true, so a provider that does not accept reasoning_effort silently drops it and the max-effort rung collapses into a duplicate of the rung below it. Confirm acceptance at Gate 2 rather than assuming the rung is live.",
+          "enum": [null, "low", "medium", "high", "xhigh", "max"]
+        },
+        "fable_tier": {
+          "type": "boolean",
+          "description": "Optional, default false. Marks a rung that ordinary fail-up escalation must never select — reachable only when a human explicitly declares this specific task warrants it, with the reason logged (CW-02 §3's logged-reason requirement for the proprietary lines). Absent or false means an ordinary rung. This is a DECLARATIVE marker, exactly like `enabled` and exactly like CW-02's T6 gate, which is policy plus `enabled: false` and not code — see the CC-P6 report. It is not read by failup.py, which escalates through .claude/tiers.json and never opens this registry."
+        },
+        "failover_only": {
+          "type": "boolean",
+          "description": "Optional, default false. CW-04 §2.2: a route that is availability insurance, not a capability rung — reachable only when a first-party endpoint health-checks down, never entering a benchmark cell. OpenRouter is the case this exists for. Nothing in the Scale-1 registry sets it yet and that is deliberate: any row rendered into a model group is routable by LiteLLM's own retry/fallback, so a `failover_only` row placed in a live alias group would be exactly the routable rung CW-04 demoted it from. The health-check-gated call path and the `unbenched` tag are HB-2 (CW-04 §8 item 6); this field is the schema affordance waiting for them."
         },
         "data_classification": {
           "type": "string",

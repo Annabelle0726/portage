@@ -51,6 +51,7 @@ models:
     endpoint: os.environ/SOVEREIGN_BASE_URL
     open_weight: true
     license: UNVERIFIED        # TODO(allocation): set from the served weights
+    license_family: unverified
     max_context: 32768         # TODO(allocation): confirm against vLLM launch
     supports_tools: true
     supports_json: true
@@ -66,6 +67,7 @@ models:
     endpoint: os.environ/SOVEREIGN_BASE_URL
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 32768
     supports_tools: true
     supports_json: true
@@ -81,6 +83,7 @@ models:
     endpoint: os.environ/SOVEREIGN_BASE_URL
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 131072
     supports_tools: true
     supports_json: true
@@ -96,6 +99,7 @@ models:
     endpoint: os.environ/SOVEREIGN_BASE_URL
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 131072
     supports_tools: true
     supports_json: true
@@ -111,6 +115,7 @@ models:
     endpoint: os.environ/SOVEREIGN_BASE_URL
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 8192
     supports_tools: false
     supports_json: false

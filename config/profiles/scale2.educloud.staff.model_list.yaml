@@ -14,6 +14,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 32768
     supports_tools: true
     supports_json: true
@@ -32,6 +33,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 32768
     supports_tools: true
     supports_json: true
@@ -50,6 +52,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 131072
     supports_tools: true
     supports_json: true
@@ -68,6 +71,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 131072
     supports_tools: true
     supports_json: true
@@ -85,6 +89,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 8192
     supports_tools: false
     supports_json: false
@@ -102,6 +107,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 1048576
     supports_tools: true
     supports_json: true
@@ -119,6 +125,7 @@ model_list:
     enabled: true
     open_weight: true
     license: UNVERIFIED
+    license_family: unverified
     max_context: 1048576
     supports_tools: true
     supports_json: true
@@ -135,6 +142,7 @@ model_list:
     enabled: false
     open_weight: false
     license: Proprietary
+    license_family: proprietary
     max_context: 200000
     supports_tools: true
     supports_json: true
@@ -151,6 +159,7 @@ model_list:
     enabled: false
     open_weight: false
     license: Proprietary
+    license_family: proprietary
     max_context: 128000
     supports_tools: false
     supports_json: false

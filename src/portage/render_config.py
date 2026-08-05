@@ -147,22 +147,49 @@ def render_model_list(models: list[dict]) -> dict:
             litellm_params["model"] = f"perplexity/{model_id}"
             litellm_params["api_key"] = "os.environ/PERPLEXITYAI_API_KEY"
         elif route == "openai":
+            # Scale-2's institution-hosted vLLM. NOT api.openai.com — see
+            # `openai_direct` below. The two are separate enum values on
+            # purpose: collapsing them would sign a commercial OpenAI call
+            # with the sovereign token, or point GPT-5.6 Sol at Jetstream2.
             litellm_params["model"] = f"openai/{model_id}"
             litellm_params["api_base"] = m.get(
                 "endpoint", "os.environ/SOVEREIGN_BASE_URL"
             )
             litellm_params["api_key"] = "os.environ/SOVEREIGN_TOKEN"
+        elif route == "openai_direct":
+            litellm_params["model"] = f"openai/{model_id}"
+            litellm_params["api_key"] = "os.environ/OPENAI_API_KEY"
+        elif route == "deepseek":
+            # First-party api.deepseek.com, not an aggregator: CW-04 §2.2 makes
+            # this rung direct specifically for automatic prefix caching, which
+            # bills a repeated prefix at ~2% of the miss rate. A native LiteLLM
+            # provider in the pinned v1.93.0, so no api_base is needed.
+            litellm_params["model"] = f"deepseek/{model_id}"
+            litellm_params["api_key"] = "os.environ/DEEPSEEK_API_KEY"
+        elif route == "morph":
+            litellm_params["model"] = f"morph/{model_id}"
+            litellm_params["api_key"] = "os.environ/MORPH_API_KEY"
+        elif route == "moonshot":
+            litellm_params["model"] = f"moonshot/{model_id}"
+            litellm_params["api_key"] = "os.environ/MOONSHOT_API_KEY"
         else:  # pragma: no cover - schema enum already prevents this
             raise RegistryError(f"unknown provider_route {route!r}")
 
         if m.get("order") is not None:
             litellm_params["order"] = m["order"]
+        # `effort` is the registry's field name (matching models.json on Lane A);
+        # `reasoning_effort` is LiteLLM's param name. Omitted entirely when null,
+        # never sent as a default — a rung that wants default effort must not
+        # carry the flag at all (same rule as failup.py's tiers file).
+        if m.get("effort") is not None:
+            litellm_params["reasoning_effort"] = m["effort"]
 
         model_info = {
             "portage_alias": m["alias"],
             "enabled": m["enabled"],
             "open_weight": m["open_weight"],
             "license": m["license"],
+            "license_family": m["license_family"],
             "max_context": m["max_context"],
             "supports_tools": m["supports_tools"],
             "supports_json": m["supports_json"],
@@ -177,6 +204,16 @@ def render_model_list(models: list[dict]) -> dict:
             ]
         if "stream_tools" in m:
             model_info["stream_tools"] = m["stream_tools"]
+        if m.get("effort") is not None:
+            model_info["effort"] = m["effort"]
+        # Only surfaced when true. These are policy markers a downstream
+        # selector reads (the same way it reads `enabled`), so an absent key
+        # and an explicit false mean the same thing and the noise isn't worth
+        # carrying on every row.
+        if m.get("fable_tier"):
+            model_info["fable_tier"] = True
+        if m.get("failover_only"):
+            model_info["failover_only"] = True
 
         model_list.append(
             {
