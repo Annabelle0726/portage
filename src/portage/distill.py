@@ -35,12 +35,31 @@ human-judged slice as an anchor, and gate every adapter on the platform's
 non-inferiority rule before it ships.
 """
 import argparse
+import importlib.util
 import json
 import os
 from collections import Counter, defaultdict
 from pathlib import Path
 
 MIN_PER_ROLE = 300          # below this, prompted roles beat a weak adapter
+
+
+def _load_runlog():
+    """The shared run reconstruction (`runlog.py`), loaded by path.
+
+    distill.py is a single-file `uv run --script` utility rather than a package
+    member, and tests load it by path too, so a plain `import runlog` would
+    resolve only when sys.path happens to contain src/portage. Same idiom, and
+    same reason, as measure.py::_load_runlog() and failup.py::code_profile().
+    """
+    path = Path(__file__).resolve().parent / "runlog.py"
+    spec = importlib.util.spec_from_file_location("portage_runlog", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+runlog = _load_runlog()
 
 
 def state(project: str) -> Path:
@@ -54,23 +73,28 @@ def read_jsonl(p: Path) -> list[dict]:
 
 
 def tasks(project: str) -> list[dict]:
-    """Reconstruct per-task outcomes from the guard's attempt log."""
-    by_run = defaultdict(list)
-    for a in read_jsonl(state(project) / "failup-log.jsonl"):
-        by_run[a.get("run_id", a["ts"])].append(a)
+    """Reconstruct per-task outcomes from the guard's attempt log.
+
+    Reconstruction is `runlog.reconstruct` — the same one measure.py uses, so
+    the two cannot drift and a fifth reader cannot reintroduce the defect by
+    grouping by `run_id` for itself. Every run is returned, admissible or not,
+    each carrying `admissible` and `inadmissible_reason`; deciding what to do
+    with an inadmissible run belongs to each builder, because they do not all
+    depend on the tier ladder (see `build_triage` and `build_adapt`).
+    """
     out = []
-    for run_id, run in by_run.items():
-        run.sort(key=lambda a: a["tier"])
-        passed = [a for a in run if a["ok"]]
-        win = min((a["tier"] for a in passed), default=None)
+    for r in runlog.reconstruct(read_jsonl(state(project) / "failup-log.jsonl")):
         out.append({
-            "run_id": run_id,
-            "task": run[0].get("task", ""),      # guard logs task text if present
-            "start_tier": run[0]["tier"],
-            "win_tier": win,
-            "win_model": next((a["model"] for a in run if a["tier"] == win), None),
-            "attempts": len(run),
-            "stalled": win is None,
+            "run_id": r["run_id"],
+            # guard logs task text if present
+            "task": r["attempts"][0].get("task", ""),
+            "start_tier": r["start_tier"],
+            "win_tier": r["win_tier"],
+            "win_model": r["win_model"],
+            "attempts": len(r["attempts"]),
+            "stalled": r["stalled"],
+            "admissible": r["admissible"],
+            "inadmissible_reason": r["inadmissible_reason"],
         })
     return out
 
@@ -78,9 +102,19 @@ def tasks(project: str) -> list[dict]:
 # ---------------------------------------------------------------- builders --
 
 def build_routing(project: str) -> list[dict]:
-    """Label = the cheapest tier that passed. Ground truth, for free."""
+    """Label = the cheapest tier that passed. Ground truth, for free.
+
+    Ground truth only where the ladder actually walked. If a cheaper tier was
+    never reached (rate limit, refused connection, timeout) then "the cheapest
+    tier that passed" is not the cheapest tier that COULD have passed, and the
+    label teaches the router to over-route to a tier it never needed. Those runs
+    are skipped, and `report()` prints how many so the exclusion is never
+    silent.
+    """
     rows = []
     for t in tasks(project):
+        if not t["admissible"]:
+            continue
         if t["stalled"] or not t["task"] or t["win_model"] is None:
             continue
         rows.append({"messages": [
@@ -140,7 +174,16 @@ BUILDERS = {"routing": build_routing, "triage": build_triage, "adapt": build_ada
 
 def report(project: str) -> None:
     ts = tasks(project)
-    print(f"tasks with outcomes: {len(ts)}   stalled: {sum(t['stalled'] for t in ts)}")
+    inadmissible = sum(1 for t in ts if not t["admissible"])
+    print(f"tasks with outcomes: {len(ts)}   stalled: {sum(t['stalled'] for t in ts)}"
+          f"   inadmissible: {inadmissible}")
+    if inadmissible:
+        print(f"  ! {inadmissible} run(s) had a tier below the winner that was never"
+              "\n    reached (rate limit / refused connection / timeout). They are"
+              "\n    excluded from the routing labels: 'the cheapest tier that passed'"
+              "\n    is not ground truth when a cheaper tier was never tried. They are"
+              "\n    still counted in triage, whose label comes from the clarify log"
+              "\n    rather than from tiers.")
     missing_text = sum(1 for t in ts if not t["task"])
     if missing_text:
         print(f"  ! {missing_text} tasks have no task text logged — they are "
@@ -152,9 +195,14 @@ def report(project: str) -> None:
         ready = "yes" if n >= MIN_PER_ROLE else f"no (<{MIN_PER_ROLE})"
         print(f"{role:<10}{n:>10}{ready:>10}")
 
-    dist = Counter(t["win_tier"] for t in ts if not t["stalled"])
+    # Admissible only, because this is billed as "the routing label
+    # distribution" and build_routing now emits labels for admissible runs only.
+    # A distribution that disagreed with the labels it claims to describe would
+    # be a new version of the defect this line is being fixed for.
+    dist = Counter(t["win_tier"] for t in ts if not t["stalled"] and t["admissible"])
     if dist:
-        print("\nwin-tier distribution (the routing label distribution):")
+        print("\nwin-tier distribution (the routing label distribution,"
+              " admissible runs only):")
         for tier, c in sorted(dist.items()):
             print(f"  tier {tier}: {c}")
         if len(dist) == 1:

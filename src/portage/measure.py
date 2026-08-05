@@ -27,11 +27,32 @@ hand from `/usage` (see `snapshot`). Everything else is derived from the logs.
                       --vs-since 2026-07-08 --vs-until 2026-07-15   # baseline vs treat
 """
 import argparse
+import importlib.util
 import json
 import os
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
+
+
+def _load_runlog():
+    """The shared run reconstruction (`runlog.py`), loaded by path.
+
+    measure.py is a single-file `uv run --script` utility rather than a package
+    member, and tests load it by path too, so a plain `import runlog` would
+    resolve only when sys.path happens to contain src/portage. Loading by path
+    works in both modes and adds no dependency — runlog.py is stdlib-only, like
+    everything else in this repo's core. Same idiom, and same reason, as
+    failup.py::code_profile().
+    """
+    path = Path(__file__).resolve().parent / "runlog.py"
+    spec = importlib.util.spec_from_file_location("portage_runlog", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+runlog = _load_runlog()
 
 
 def state(project: str) -> Path:
@@ -68,27 +89,42 @@ def snapshot(args) -> None:
 
 
 def summarize(project: str, since, until) -> dict:
+    """The headline numbers, over ADMISSIBLE runs only.
+
+    Every capability statistic below — floor-pass, escalation, ceiling-stall and
+    the win-tier distribution — is computed over runs where every tier below the
+    winner actually produced a capability verdict (`runlog.reconstruct`). A run
+    whose cheaper tier was rate-limited says nothing about whether that tier
+    could have done the task, and counting it inflated `escalation_rate` and
+    deflated `floor_pass_rate`.
+
+    The excluded runs are COUNTED, never silently dropped: `inadmissible_runs`
+    and `inadmissible_rate` are part of the returned dict and are printed. So is
+    `stalled`, the raw count over the whole population, which stays distinct
+    from `ceiling_stall_rate` (admissible only) so that a run which stalled
+    BECAUSE every tier was unreachable shows up as both facts rather than
+    collapsing into one.
+    """
     attempts = [a for a in read_jsonl(state(project) / "failup-log.jsonl")
                 if in_window(a["ts"], since, until)]
-    # group escalation attempts into tasks by run_id
-    by_run = defaultdict(list)
-    for a in attempts:
-        by_run[a.get("run_id", a["ts"])].append(a)
+    runs = runlog.reconstruct(attempts)
+    admissible, inadmissible = runlog.partition(runs)
 
-    tasks = len(by_run)
+    tasks = len(runs)
+    n_adm = len(admissible)
+    stalled_all = sum(1 for r in runs if r["stalled"])
+
     escalated = stalled = floor_pass = 0
     win_tier = defaultdict(int)
-    for run in by_run.values():
-        run.sort(key=lambda a: a["tier"])
-        passed = [a for a in run if a["ok"]]
-        if not passed:
+    for r in admissible:
+        if r["stalled"]:
             stalled += 1
             continue
-        top = min(a["tier"] for a in passed)
+        top = r["win_tier"]
         win_tier[top] += 1
         if top == 0:
             floor_pass += 1
-        if len(run) > 1 and top > min(a["tier"] for a in run):
+        if len(r["attempts"]) > 1 and top > r["start_tier"]:
             escalated += 1
 
     usage = [u for u in read_jsonl(state(project) / "usage-log.jsonl")
@@ -105,9 +141,13 @@ def summarize(project: str, since, until) -> dict:
 
     return {
         "tasks": tasks,
-        "floor_pass_rate": _pct(floor_pass, tasks),
-        "escalation_rate": _pct(escalated, tasks),
-        "ceiling_stall_rate": _pct(stalled, tasks),
+        "admissible_tasks": n_adm,
+        "inadmissible_runs": inadmissible,
+        "inadmissible_rate": _pct(inadmissible, tasks),
+        "stalled": stalled_all,
+        "floor_pass_rate": _pct(floor_pass, n_adm),
+        "escalation_rate": _pct(escalated, n_adm),
+        "ceiling_stall_rate": _pct(stalled, n_adm),
         "win_tier_distribution": dict(sorted(win_tier.items())),
         "quota": quota,
     }
@@ -126,6 +166,13 @@ def _fmt(label, s: dict) -> str:
     lines = [
         f"── {label} ──",
         f"  tasks:              {s['tasks']}",
+        f"  admissible:         {s['admissible_tasks']}   "
+        "(every tier below the winner was actually reached)",
+        f"  EXCLUDED:           {s['inadmissible_runs']} "
+        f"({s['inadmissible_rate']}%)   <- a cheaper tier was never tried; "
+        "these say nothing about capability",
+        f"  stalled (all runs): {s['stalled']}",
+        "  ── the four below are over ADMISSIBLE runs only ──",
         f"  floor-pass rate:    {s['floor_pass_rate']}%   (resolved at tier 0)",
         f"  escalation rate:    {s['escalation_rate']}%",
         f"  ceiling-stall rate: {s['ceiling_stall_rate']}%   <- the quality guardrail",
@@ -208,30 +255,37 @@ def load_ladder(project: str, tiers_file: str | None) -> list[str]:
     return out
 
 
-def tasks_in(project: str, since, until) -> list[dict]:
-    """One record per task: which tier won, and what was proven along the way."""
+def tasks_in(project: str, since, until) -> tuple[list[dict], int]:
+    """ADMISSIBLE tasks in the window, and the number excluded.
+
+    Returns `(rows, excluded)` — a pair rather than a list, so that no caller
+    can take the admissible population without also holding the count it has to
+    report. `downscale()` prints that count next to its thin-data warning.
+
+    `proven` is the reason this filter matters most: it means "something cheaper
+    was actually tried and failed", and it feeds the counterfactual that decides
+    whether a paid lane can be cancelled. If the cheaper tier was rate-limited
+    it was not tried, and `proven` was a false positive that argued for keeping
+    a lane the evidence never justified. Runs where that happened are excluded
+    here rather than being repaired, because there is no repair: the run does not
+    contain the observation.
+    """
     attempts = [a for a in read_jsonl(state(project) / "failup-log.jsonl")
                 if in_window(a["ts"], since, until)]
-    by_run = defaultdict(list)
-    for a in attempts:
-        by_run[a.get("run_id", a["ts"])].append(a)
+    admissible, excluded = runlog.partition(runlog.reconstruct(attempts))
 
     out = []
-    for run in by_run.values():
-        run.sort(key=lambda a: a["tier"])
-        passed = [a for a in run if a["ok"]]
-        started = run[0]["tier"]
-        win = min((a["tier"] for a in passed), default=None)
+    for r in admissible:
+        win = r["win_tier"]
         out.append({
-            "start_tier": started,
+            "start_tier": r["start_tier"],
             "win_tier": win,
-            "win_meter": meter_of(next(a["model"] for a in run if a["tier"] == win))
-                         if win is not None else None,
+            "win_meter": meter_of(r["win_model"]) if win is not None else None,
             # proven = something cheaper was actually tried and failed
-            "proven": win is not None and started < win,
-            "stalled": win is None,
+            "proven": win is not None and r["start_tier"] < win,
+            "stalled": r["stalled"],
         })
-    return out
+    return out, excluded
 
 
 def interactive_use(project: str, use_log: str | None) -> dict:
@@ -250,7 +304,7 @@ def downscale(args) -> None:
     project = args.project
     since, until = parse(args.since), parse(args.until)
     ladder = load_ladder(project, args.tiers)
-    tasks = tasks_in(project, since, until)
+    tasks, excluded = tasks_in(project, since, until)
     inter = interactive_use(project, args.use_log)
     n = len(tasks)
 
@@ -262,7 +316,16 @@ def downscale(args) -> None:
     thin = ""
     if n < THIN_DATA:
         thin = "   (thin data — treat everything below as directional)"
-    print(f"automated tasks in window: {n}{thin}\n")
+    print(f"automated tasks in window: {n}{thin}")
+    # The exclusion count sits NEXT TO the thin-data warning on purpose:
+    # exclusions make thin data thinner, and the operator has to see both
+    # numbers before cancelling a subscription on the strength of the table
+    # below. Printed even when zero, so its absence is never mistaken for
+    # "nothing was dropped".
+    print(f"excluded as inadmissible:  {excluded}"
+          "   (a cheaper tier was never reached — the run cannot prove"
+          " anything about it)")
+    print()
 
     # --- utilization -------------------------------------------------------
     resolved = [t for t in tasks if t["win_meter"]]
@@ -292,6 +355,9 @@ def downscale(args) -> None:
           f"{int(LOCAL_FLOOR * 100)}% floor)")
     if free_share < LOCAL_FLOOR:
         print("  -> routing is not actually absorbing work yet. No downscale is safe.")
+    if excluded:
+        print(f"  (computed over {len(resolved)} admissible resolved tasks; "
+              f"{excluded} run(s) excluded — see above)")
 
     # --- counterfactual per meter -----------------------------------------
     print("\nif a lane disappeared:")

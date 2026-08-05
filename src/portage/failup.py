@@ -119,8 +119,10 @@ DEFAULT_GATE_CMDS = (
 # before the contract existed, and `.claude/state/failup-log.jsonl` is
 # longitudinal — records months old carry them. The contract's registry-governed
 # `reason_code` is the label source those consumers should move to (see the
-# verifier-contract repo's docs/P1-report.md §6); until they do, the guard
-# translates back so no historical record changes meaning.
+# verifier-contract repo's docs/P1-report.md §6). The log now carries BOTH: the
+# raw `reason_code` alongside this translation, so the move can happen a consumer
+# at a time without a migration and without any historical record changing
+# meaning. This table stays until the last consumer of `reason` is gone.
 _LEGACY_REASON = {
     "code.empty_diff": "empty-diff",
     "code.lint_failed": "lint-failed",
@@ -234,13 +236,22 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
             avail_reason = "unavailable:timeout"
 
         if avail_reason:
-            # The SUBJECT was unreachable — never reaches the verifier at all.
-            ok, reason, category = False, avail_reason, "availability"
+            # The SUBJECT was unreachable — never reaches the verifier at all,
+            # so there is no verdict document and therefore no reason_code. The
+            # contract has no availability namespace ON PURPOSE (SPEC.md §2.1),
+            # so `reason_code: null` here is the correct record, not a gap: it
+            # says "no verifier judged this", which is exactly the fact
+            # `category` also carries.
+            ok, reason, reason_code, category = (
+                False, avail_reason, None, "availability")
         else:
             # By the time we get here the availability case is already filtered
             # out, so an empty change set IS a capability verdict (SPEC.md §2.1).
             verdict = code_verdict(project, gate_cmds)
             ok = verdict["verdict"] == "pass"
+            # A `pass` carries no reason code (schema/verdict.schema.json
+            # requires one only on `fail`), so this is None on success too.
+            reason_code = verdict.get("reason_code")
             reason = "ok" if ok else _LEGACY_REASON[verdict["reason_code"]]
             category = "ok" if ok else "capability"
 
@@ -249,7 +260,15 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                 "ts": datetime.now(UTC).isoformat(), "run_id": run_id,
                 "task": task,                # needed for distillation (docs/specs/09)
                 "tier": tier, "model": model, "effort": effort,
-                "ok": ok, "reason": reason, "category": category,
+                # BOTH, not one. `reason` is the legacy string this log has
+                # carried since before the contract existed and is what keeps
+                # month-old records meaning what they said. `reason_code` is the
+                # registry-governed code, verbatim from the verdict document,
+                # and is what a new consumer should branch on: the registry is
+                # append-only (SPEC.md §7.2), whereas a free-text reason can be
+                # reworded invisibly to someone reading last month's logs.
+                "ok": ok, "reason": reason, "reason_code": reason_code,
+                "category": category,
                 "seconds": round(time.time() - t0, 1),
             }) + "\n")
 

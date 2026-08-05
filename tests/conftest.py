@@ -41,6 +41,22 @@ def code_profile():
 
 
 @pytest.fixture
+def runlog():
+    """The shared run reconstruction — one admissibility rule, two consumers."""
+    return _load("runlog_under_test", SCRIPTS / "runlog.py")
+
+
+@pytest.fixture
+def measure():
+    return _load("measure_under_test", SCRIPTS / "measure.py")
+
+
+@pytest.fixture
+def distill():
+    return _load("distill_under_test", SCRIPTS / "distill.py")
+
+
+@pytest.fixture
 def git_repo(tmp_path):
     """A throwaway git repo with a tracked marker.txt at HEAD, so `git reset
     --hard` (failup.py's recovery step) has something meaningful to revert to
