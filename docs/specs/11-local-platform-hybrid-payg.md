@@ -390,7 +390,7 @@ organised is gone. There is one proprietary line:
 
 | Alias | Occupant | State |
 |---|---|---|
-| `proprietary_research` | GPT-5.6 Sol (`openai_direct/gpt-5.6-sol`) | `enabled: false` |
+| `proprietary_research` | GPT-5.6 Sol — registry `provider_route: openai_direct`, rendering to `model: openai/gpt-5.6-sol` with `api_key: os.environ/OPENAI_API_KEY` and **no** `api_base` | `enabled: false` |
 
 And two absences that matter more than the occupant:
 
@@ -407,11 +407,13 @@ And two absences that matter more than the occupant:
   there (CW-04 §2.3).
 
 The `openai_direct` route is deliberately distinct from the `openai` route.
-`openai` is Scale 2's institution-hosted vLLM path, rendering
-`api_base: SOVEREIGN_BASE_URL` with `api_key: SOVEREIGN_TOKEN`; rendering
-GPT-5.6 Sol under it would point a commercial OpenAI call at Jetstream2 and sign
-it with the sovereign token. The two must never collapse, and a test asserts
-they don't.
+Both render the same `openai/<model_id>` LiteLLM prefix, which is exactly why
+the distinction has to live at the registry level: `openai` additionally emits
+`api_base: SOVEREIGN_BASE_URL` and `api_key: SOVEREIGN_TOKEN` — Scale 2's
+institution-hosted vLLM path — while `openai_direct` emits `OPENAI_API_KEY` and
+no `api_base`, reaching `api.openai.com`. Rendering GPT-5.6 Sol under `openai`
+would point a commercial OpenAI call at Jetstream2 and sign it with the
+sovereign token. The two must never collapse, and a test asserts they don't.
 
 `max_context: 400000` on this row is a **placeholder**, not a confirmed limit —
 the schema requires an integer, so a disabled row cannot carry `null`. Treat it
