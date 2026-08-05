@@ -15,8 +15,15 @@ on a too-cheap model — it fails the check and self-corrects to Opus.
 
 This is why you don't need a sophisticated classifier: cheap heuristics can be
 wrong, because the guard catches the misses.
+
+The deterministic gate itself is no longer inline: it is the `code` profile of
+the verifier contract (`code_profile.py` here, `SPEC.md` in the sibling
+verifier-contract repository), reached through `code_verdict()`. The escalation
+logic below is unchanged and now reads a verdict document instead of a
+`(bool, reason)` pair.
 """
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -74,6 +81,19 @@ def git(project, *args):
 # and misfiling that as "empty-diff" (a capability verdict) would poison
 # measure.py's win-tier distribution and the steward's training signal
 # (PLATFORM.md §9) with attempts that were never really tried.
+#
+# ── ONE DISTINCTION, TWO SITES, ON PURPOSE ──────────────────────────────────
+# This is the "the SUBJECT was unreachable" half of the distinction the verifier
+# contract's SPEC.md §2 names. The other half — "the JUDGE was unreachable" — is
+# a non-zero exit from the verifier itself and lives at `code_verdict()` below;
+# the two are cross-referenced so a later reader sees one distinction
+# deliberately implemented in two places rather than two mechanisms that
+# drifted. THIS check stays HERE, upstream of the verifier call, and must never
+# move into the contract: the request document carries no endpoint, credential
+# or model handle (SPEC.md §5), so a verifier cannot tell "the model could not
+# do the task" from "the model was rate-limited" — only this function, which
+# holds the runner's own transcript, can. SPEC.md §2.1 quotes the comment above
+# verbatim as the rationale, so keep the two in sync if you ever edit it.
 AVAILABILITY_MARKERS = (
     "429", "503", "502", "connection refused", "connect refused",
     "rate limit", "overloaded", "econnrefused", "connection reset",
@@ -90,25 +110,80 @@ def runner_availability_failure(proc: subprocess.CompletedProcess) -> str | None
     return None
 
 
-def checks_pass(project: str, gate_cmds=None):
-    """Deterministic gate: non-empty diff -> coherent -> tests green.
+DEFAULT_GATE_CMDS = (
+    ["uv", "run", "ruff", "check", "."],
+    ["uv", "run", "pytest", "-q"],
+)
+
+# The guard's log, measure.py and distill.py have read these exact strings since
+# before the contract existed, and `.claude/state/failup-log.jsonl` is
+# longitudinal — records months old carry them. The contract's registry-governed
+# `reason_code` is the label source those consumers should move to (see the
+# verifier-contract repo's docs/P1-report.md §6); until they do, the guard
+# translates back so no historical record changes meaning.
+_LEGACY_REASON = {
+    "code.empty_diff": "empty-diff",
+    "code.lint_failed": "lint-failed",
+    "code.typecheck_failed": "typecheck-failed",
+    "code.tests_failed": "tests-failed",
+}
+
+_CODE_PROFILE = None
+
+
+def code_profile():
+    """The sibling `code` profile module, loaded by path.
+
+    failup.py is a single-file `uv run --script` utility rather than a package
+    member — tests load it by path too (tests/conftest.py) — so a plain
+    `import code_profile` would resolve only when sys.path happens to contain
+    src/portage. Loading by path works in both modes and adds no dependency:
+    code_profile.py is stdlib-only, like everything else in this repo's core.
+    """
+    global _CODE_PROFILE
+    if _CODE_PROFILE is None:
+        path = Path(__file__).resolve().parent / "code_profile.py"
+        spec = importlib.util.spec_from_file_location("portage_code_profile", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _CODE_PROFILE = module
+    return _CODE_PROFILE
+
+
+def code_verdict(project: str, gate_cmds=None) -> dict:
+    """The deterministic gate, THROUGH THE VERIFIER CONTRACT BOUNDARY.
+
+    Was `checks_pass()`, which returned `(bool, reason)`. The predicate is
+    unchanged — non-empty change set, then lint, then tests, short-circuiting at
+    the first failure — but it now lives in `code_profile.py` behind a request
+    document in / verdict document out interface (`SPEC.md` in the sibling
+    verifier-contract repo). What moved is the boundary, not the decision.
 
     `gate_cmds`, an optional (lint_cmd, test_cmd) pair, lets tests substitute
     trivial fixture commands for the project's own ruff+pytest so the guard's
     ESCALATION LOGIC is unit-testable with zero network and zero model calls
     (HANDOFF Phase 2 acceptance). Production callers never pass it.
+
+    ── ONE DISTINCTION, TWO SITES, ON PURPOSE ──────────────────────────────
+    This is the "the JUDGE was unreachable" half of the distinction SPEC.md §2
+    names: if the verifier itself breaks it raises (as an executable it would
+    exit non-zero), and that is NOT a `fail` verdict — collapsing the two would
+    turn every crashed verifier into a universal failure signal and silently
+    escalate every task to the most expensive tier. The other half — "the
+    SUBJECT was unreachable" — is `runner_availability_failure()` above, which
+    runs BEFORE this call and stays out of the contract for the reason stated
+    there. Read the two comments together.
     """
-    if not git(project, "status", "--porcelain").stdout.strip():
-        return False, "empty-diff"                     # agent did nothing
-    lint_cmd, test_cmd = gate_cmds or (
-        ["uv", "run", "ruff", "check", "."],
-        ["uv", "run", "pytest", "-q"],
+    profile = code_profile()
+    lint_cmd, test_cmd = gate_cmds or DEFAULT_GATE_CMDS
+    # The caller computes the change set; the profile only judges it. That is why
+    # `git` stays here and not in the profile — the contract must not know that
+    # this caller happens to use git.
+    diff = git(project, "status", "--porcelain").stdout
+    request = profile.build_request(
+        diff=diff, working_dir=project, lint=lint_cmd, test=test_cmd
     )
-    if run(lint_cmd, cwd=project).returncode != 0:
-        return False, "lint-failed"                    # proxy for "patch applies"
-    if run(test_cmd, cwd=project).returncode != 0:
-        return False, "tests-failed"                   # correctness
-    return True, "ok"
+    return profile.verify(request)
 
 
 def run_ladder(task: str, project: str, tiers_file: str, runner: str,
@@ -159,9 +234,14 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
             avail_reason = "unavailable:timeout"
 
         if avail_reason:
+            # The SUBJECT was unreachable — never reaches the verifier at all.
             ok, reason, category = False, avail_reason, "availability"
         else:
-            ok, reason = checks_pass(project, gate_cmds)
+            # By the time we get here the availability case is already filtered
+            # out, so an empty change set IS a capability verdict (SPEC.md §2.1).
+            verdict = code_verdict(project, gate_cmds)
+            ok = verdict["verdict"] == "pass"
+            reason = "ok" if ok else _LEGACY_REASON[verdict["reason_code"]]
             category = "ok" if ok else "capability"
 
         with log.open("a") as f:

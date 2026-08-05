@@ -35,6 +35,12 @@ def plan_mod():
 
 
 @pytest.fixture
+def code_profile():
+    """The `code` profile of the verifier contract, loaded the same way."""
+    return _load("code_profile_under_test", SCRIPTS / "code_profile.py")
+
+
+@pytest.fixture
 def git_repo(tmp_path):
     """A throwaway git repo with a tracked marker.txt at HEAD, so `git reset
     --hard` (failup.py's recovery step) has something meaningful to revert to
