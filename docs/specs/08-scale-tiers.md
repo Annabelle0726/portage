@@ -1,13 +1,9 @@
 # 08 — Scale tiers (post-landscape-report architecture)
 
-> **Roster banner — 2026-08-04.** The provider ladder and hosted-model
-> occupants below are **superseded by `CW-04-model-roster.md`**
-> (`portage-local/docs/reports/`). CW-04 §2.2 removes OpenRouter from the
-> ladder entirely — it becomes a non-routable failover path, not a rung — and
-> §2.3 changes the occupant of every hosted tier. The rewrite that lands this
-> is CW-03 group 4, which **has not been performed**; CW-02 §6 pins it to a
-> top-model gate review. Do not act on the provider content below without
-> reading CW-04 and `CW04-HB0-drift.md` first.
+> **Scale-1 ladder rewritten 2026-08-05** per `CW04-model-roster.md` and CC-P6,
+> and checked against the live `registry.yaml`. Decision record in
+> `portage-local/docs/reports/` (`CW04-model-roster.md`, `CW04-HB0-drift.md`,
+> `P6-report.md`, `P7-report.md`).
 
 Source: `routing-layer-landscape-2026.md` (uploaded survey). Its verdicts:
 **build** the fail-up guard, herdr-meters, and the quality-adjusted-efficiency
@@ -25,42 +21,64 @@ ladder and (b) which heavy backends are justified. Adopt infrastructure only
 when the scale earns it; every adoption below is reversible because the custom
 core never depends on backend internals.
 
-> **Updated 2026-07 (Scale-1 transition, `docs/specs/10`–`11`, `REVISION-PLAN.md`).**
+> **Updated 2026-08-05 (Scale-1 transition, `docs/specs/10`–`11`, `REVISION-PLAN.md`).**
 > The Scale-1 ladder below has changed: fixed subscription rungs (Claude Max /
 > Codex Plus) are removed from the production ladder and replaced by hosted
-> open-weight (OpenRouter/Together) + a boundary-gated proprietary **PAYG**
-> ceiling. Subscriptions survive only as Parity Bench baseline arms. The
-> scale-invariance rule is unchanged. Ladder revised again 2026-07-28 per
-> CW02-decisions.md §3 (dormant-slot synthesis; Groq at T3). The Scale-2/3
-> sections below move to the EduCloud umbrella at CC-P0 v2 (CW02 §4).
+> open-weight + a boundary-gated proprietary **PAYG** ceiling. Subscriptions
+> survive only as Parity Bench baseline arms. The scale-invariance rule is
+> unchanged. Ladder revised 2026-07-28 per CW02-decisions.md §3 (dormant-slot
+> synthesis), then again 2026-08-05 per CW-04 §2.1–2.3 and CC-P6: Groq's T3 slot
+> vacates into the dormant T5 reserve, OpenRouter leaves the ladder entirely,
+> DeepSeek first-party and Morph take T3 and T4, Anthropic's row is deleted so
+> T6 has one occupant, and the Kimi K3 Fable tier is added off the chain. The
+> Scale-2/3 sections below move to the EduCloud umbrella at CC-P0 v2 (CW02 §4).
 
 ---
 
 ## Scale 1 — Personal (laptop/iMac + open-weight + PAYG ceiling)
 
-Ladder (`policy_mode: hybrid`): `local_fast (iMac + MacBook, two deployments)
-→ [local_large: future 128GB, dormant] → remote_open_fast (Groq) →
-remote_open_broad (OpenRouter, open-weight allowlist) → [remote_open_direct:
-Together, dormant] → proprietary (Anthropic/OpenAI PAYG, boundary-gated)`.
-Perplexity Sonar is the Science-lane
-PAYG specialist behind the open research stack, not an app subscription. End
-state (`open_weight_only`, `docs/specs/10`) drops the last rung.
+Ladder (`policy_mode: hybrid`): `local_fast (iMac + MacBook, two deployments) →
+[local_large: future 128GB, dormant] → remote_open_direct (DeepSeek
+first-party) → remote_open_broad (Morph, + the "Flash Max" rung) →
+[remote_open_reserve: Groq / Together, dormant] → proprietary (GPT-5.6 Sol
+PAYG, boundary-gated, one occupant, disabled by default)`. Perplexity is **not**
+the Science-lane specialist any more — CW-04 §3 gates its API behind the
+science-lane citation verifier ("do not open before that ships"), and the
+`proprietary_research` alias now points at GPT-5.6 Sol. End state
+(`open_weight_only`, `docs/specs/10`) drops the last rung.
+
+Off the chain: the **Fable tier**, Kimi K3 (`moonshot/kimi-k3`). Not a rung, not
+a T-number, not rung 7 — reachable only by an explicit human declaration that a
+specific task warrants it, with the reason logged, never by escalation.
+`fable_tier: true` + `enabled: false`. Public weights, `license_family:
+non_permissive`, so `open_weight_only` excludes it on licence.
+
+OpenRouter is off the ladder entirely (CW-04 §2.2): a non-routable failover
+path tagged `unbenched`, reachable only on a first-party health-check failure —
+and that path is unbuilt. The schema carries a `failover_only` field for it and
+no row sets it, so OpenRouter serves no traffic at any tier today.
 
 | Component | Scale-1 choice | Why |
 |---|---|---|
 | Proxy spine | **LiteLLM**, one config.yaml per mode | Already decided; lightweight at n=1 |
 | Guard / triage / meters plugin | **Custom core, as drafted** | Report confirms no substitute exists |
-| Hosted-open fast tier | **Groq** (T3) — pinned model IDs, per-model compatibility record | Fast open-weight escalation before OpenRouter for iterative agent/repair loops (pilot-reconciled §2); automatic prompt caching on the Kimi/GPT-OSS families |
-| Hosted-open aggregation | **OpenRouter** (T4) — config, not code; hard open-weight allowlist, provider routing by price/throughput/latency, optional ZDR | The survey confirms provider-restriction + fallback controls are native; do NOT use an unrestricted auto-router that could select proprietary models |
-| Hosted-open direct backup | **Together — DORMANT slot** (deferred per CW02; re-enable on OpenRouter-unavailability telemetry), **DeepInfra** optional | Removes OpenRouter as a single dependency; lets the bench compare aggregation vs direct on the same model. Both are just LiteLLM deployments |
-| Proprietary ceiling | **Anthropic/OpenAI/Perplexity PAYG** behind LiteLLM budgets, boundary-gated | No fixed subscription rung; reached only on verified open failure / documented specialist / explicit override |
-| Classifier backend | **Ollama 7B + keyword rules** — do NOT deploy vLLM Semantic Router | vLLM SR is deployment-grade (BERT models, dashboard, Envoy); overkill for one user, and the report confirms the clarify/override wrapper stays custom regardless |
+| Hosted-open direct | **DeepSeek, first-party** (T3) — config, not code; `api.deepseek.com`, V4 Flash as the cheap first attempt then V4 Pro | Direct rather than aggregated because DeepSeek's automatic prefix caching bills repeated prefixes at roughly 2% of the miss rate, and that cache is the reason this rung's economics work (CW-04 §2.2). V4 Flash is MIT, `license_family: permissive` |
+| Hosted-open broad | **Morph** (T4) — config, not code; MiniMax M3 primary, GLM-5.2 and Qwen in-slot without a new account. Followed by "Flash Max": DeepSeek V4 Flash re-run at `reasoning_effort: max` | Serving precision is the deciding constraint. Every alias is a benchmark cell, and an aggregator free to change quantization under a stable model ID makes that cell irreproducible. Morph serves open models at bf16 without quantization and says so. Buying more thinking on a checkpoint that already passed the cheap attempt is a cheaper escalation than a new vendor |
+| Hosted-open reserve | **DORMANT slot** (T5) — Groq or Together, defined and disabled | Two independent re-enable triggers: (a) a latency-sensitive alias no local rung can serve → Groq GPT-OSS 120B, benched as its own capability cell, never a route to an existing roster model; (b) sustained Morph unavailability → Together. Groq's catalog serves none of the models this roster selects, which is why it vacated T3 (CW-04 §2.1) |
+| Proprietary ceiling | **GPT-5.6 Sol alone** (T6) behind LiteLLM budgets, `enabled: false` | No fixed subscription rung; reached only on verified open failure / documented specialist / explicit override. Anthropic's `proprietary_code` row is **deleted, not capped** — six aliases are declared now, not seven. The gate is policy plus that flag, not code |
+| Fable tier | **Kimi K3** — off the ladder, `fable_tier: true` + `enabled: false` | Not a rung and not rung 7. CW-04 §2.5 rejected K3 for the routine roster on cost and licence together; this is the narrow declared-exception that rejection leaves room for, entered by a logged human declaration only |
+| Classifier backend | **Gemma 4 E4B on Ollama + keyword rules** — do NOT deploy vLLM Semantic Router | vLLM SR is deployment-grade (BERT models, dashboard, Envoy); overkill for one user, and the report confirms the clarify/override wrapper stays custom regardless. E4B is the warm iMac model at keep-alive `-1`, so the alias that wants a warm model lives where the warm model lives |
 | Plan schema | plan.json as drafted; **OpenSpec format optional** | Cheap to adopt early (it's just a schema + 28k-star tooling), required at Scale 3 — adopting now avoids a migration |
 | Measurement | **measure.py + JSONL** — no Langfuse | A hosted/unit-priced trace store is infrastructure weight one user doesn't need; the JSONL already feeds the metric, now incl. `proprietary_displacement` + rescue efficiency |
 
 This scale is complete with what's in the repo + LiteLLM. **Nothing new to
-adopt** — OpenRouter, Together, and the PAYG providers are all LiteLLM config,
-not new dependencies. The transition itself is Phase 6a in `REVISION-PLAN.md`.
+adopt** — DeepSeek, Morph, Moonshot, and the PAYG ceiling are all LiteLLM
+config, not new dependencies, exactly as OpenRouter and Together were when they
+held those slots. All three are native providers in the pinned LiteLLM v1.93.0
+(`api.deepseek.com/beta`, `api.morphllm.com/v1`, `api.moonshot.ai/v1`), so the
+change is four new API keys and a re-render, not a new integration. The
+transition itself is Phase 6a in `REVISION-PLAN.md` — see the execution note
+there for what of it CC-P6 already did and what remains.
 
 ---
 

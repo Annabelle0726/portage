@@ -1,13 +1,9 @@
 # PLATFORM.md — final definition: **Portage**
 
-> **Roster banner — 2026-08-04.** The provider ladder and hosted-model
-> occupants below are **superseded by `CW-04-model-roster.md`**
-> (`portage-local/docs/reports/`). CW-04 §2.2 removes OpenRouter from the
-> ladder entirely — it becomes a non-routable failover path, not a rung — and
-> §2.3 changes the occupant of every hosted tier. The rewrite that lands this
-> is CW-03 group 4, which **has not been performed**; CW-02 §6 pins it to a
-> top-model gate review. Do not act on the provider content below without
-> reading CW-04 and `CW04-HB0-drift.md` first.
+> **Ladder rewritten 2026-08-05** per `CW04-model-roster.md` and CC-P6, and
+> checked against the live `registry.yaml`. Decision record in
+> `portage-local/docs/reports/` (`CW04-model-roster.md`, `CW04-HB0-drift.md`,
+> `P6-report.md`, `P7-report.md`).
 
 A self-hostable, verifier-driven, sovereignty-aware agent control plane for
 Code, Science, Design, and Cowork — open-weight by default, benchmarked honestly
@@ -70,18 +66,49 @@ never owns policy; Herdr never owns provider-infrastructure routing.
                      └──────────────┬────────────────────────────────────────────────┘
                                     ▼
                        LiteLLM proxy (auto + adaptive routing, cooldowns, groups)
-                        T0 deterministic (pins/overrides/allowlist) ·
+                        T0 deterministic (pins/overrides/allowlist,
+                        license_family check) ·
                         T1 local_fast (iMac warm + MacBook dynamic — ONE rung,
-                        TWO health-checked deployments) ·
+                        TWO health-checked deployments: classifier = Gemma 4 E4B
+                        on the iMac at keep-alive -1; code_small = Gemma 4 12B Q4
+                        on the MacBook, order 1, with E4B on the iMac as order 2;
+                        embedding = nomic-embed-text, iMac) ·
                         T2 local_large (DORMANT: future 128GB node, enabled: auto) ·
-                        T3 remote_open_fast (Groq, pinned model IDs) ·
-                        T4 remote_open_broad (OpenRouter, open-weight allowlist + ZDR) ·
-                        T5 remote_open_direct (DORMANT: Together — re-enable on
-                        OpenRouter-unavailability telemetry) ·
-                        T6 proprietary (Anthropic/OpenAI/Perplexity Sonar PAYG —
-                        hybrid only, boundary-gated: verified open failure,
-                        budget envelope, logged reason, confirm gate) ·
+                        T3 remote_open_direct (DeepSeek, first-party
+                        api.deepseek.com — V4 Flash is the cheap first attempt,
+                        V4 Pro the primary occupant; direct because DeepSeek's
+                        automatic prefix caching is why this rung is not
+                        aggregated) ·
+                        T4 remote_open_broad (Morph — bf16, no quantization, one
+                        key; MiniMax M3 primary, GLM-5.2 and Qwen in-slot without
+                        a new account. "Flash Max" — DeepSeek V4 Flash re-run at
+                        reasoning_effort: max, the same checkpoint, not a second
+                        model — sits after this occupant) ·
+                        T5 remote_open_reserve (DORMANT — CW-02's
+                        `remote_open_direct` renamed, absorbing Together. Two
+                        independent re-enable triggers: (a) a latency-sensitive
+                        alias no local rung can serve → Groq GPT-OSS 120B, benched
+                        as its own capability cell, never a route to an existing
+                        roster model; (b) sustained Morph unavailability →
+                        Together) ·
+                        T6 proprietary (ONE occupant: GPT-5.6 Sol as
+                        `proprietary_research`, `enabled: false` — hybrid only.
+                        Anthropic/`proprietary_code` is GONE: deleted from the
+                        registry, not capped, not gated. The deployment declares
+                        six capability aliases now, not seven) ·
                         T7 CEILING_STALL (terminal state, stall artifact).
+                      ── off the T1→T6 chain ──────────────────────────────────
+                        FABLE TIER (Kimi K3, moonshot/kimi-k3) — not a T-number
+                        and not rung 7. Reached only by an explicit human
+                        declaration that a specific task warrants it, logged;
+                        never by ordinary stall/failure escalation. Carried as
+                        `fable_tier: true` + `enabled: false`.
+                        OpenRouter — OFF THE LADDER. Not a rung at any T-number:
+                        a non-routable failover path tagged `unbenched`, reachable
+                        only when a first-party endpoint health-checks down. The
+                        schema carries a `failover_only` field for this and NO row
+                        sets it, so nothing routes through OpenRouter today — the
+                        mechanism is HB-2 work, not a shipped path.
                         EduCloud profile inserts institutional_sovereign
                         between T2 and T3 by config — no personal sovereign rung
                                     ▼
@@ -102,16 +129,38 @@ never owns policy; Herdr never owns provider-infrastructure routing.
 
 Escalation policy: **open-to-open first** (T1→[T2]→T3→T4→[T5]) before any
 open-to-closed step; T6 exists only in `hybrid` mode and is boundary-gated, never
-reached just because it would perform better. Full ladder, mode table, and the
-transition plan are in `REVISION-PLAN.md` and `docs/specs/10`–`11`.
+reached just because it would perform better. **The Fable tier is not part of
+"open-to-open first"** — Kimi K3 sits outside the escalation chain entirely and
+no amount of open failure reaches it; only an explicit, logged human declaration
+does. Note also what the T6 boundary gate *is* in this repo: a policy sentence
+plus `enabled: false` on the row. There is no confirm-prompt and no
+logged-reason mechanism in code (`P6-report.md` §1 established this by grep;
+`failup.py` never reads `registry.yaml` at all). Full ladder, mode table, and
+the transition plan are in `REVISION-PLAN.md` and `docs/specs/10`–`11`.
 
 ## 3. Modes
 
 | Mode | Rungs | Constraint | Use |
 |---|---|---|---|
-| `open_weight_only` | T0–T5 | model_list contains no commercial endpoints; hosted-open (T5/T6) is allowed because the weights are downloadable, only the compute is rented | end state; also offline/air-gapped |
-| `hybrid` | T0–T7 | T6 allowed only as a boundary-gated fail-up ceiling (verified open failure / documented specialist / explicit override) — never a fixed subscription rung | **current mode.** Daily driving during the Scale-1 pilot |
+| `open_weight_only` | T0–T5 | model_list contains no commercial endpoints. Eligibility tests **`license_family` against an allowlist, not `open_weight`** — published weights do not imply an acceptable grant. Hosted-open (T3/T4) is allowed because the weights are downloadable *and* the licence passes; only the compute is rented. The Fable tier is excluded here on `license_family` (`non_permissive`), not on hosting | end state; also offline/air-gapped |
+| `hybrid` | T0–T6 (T7 is the terminal stall, not a rung) | T6 allowed only as a boundary-gated fail-up ceiling (verified open failure / documented specialist / explicit override) — never a fixed subscription rung. One occupant: GPT-5.6 Sol, `enabled: false`. The gate is that flag plus policy, not code | **current mode.** Daily driving during the Scale-1 pilot |
 | `sovereign` | T0–T2 (+`institutional_sovereign` at Scale 2) | all routes pinned local + institutional; commercial *and* hosted-open both absent | clinical/regulated/EduCloud student-facing lanes |
+
+**Why `license_family` and not `open_weight`.** Kimi K3 is the case that
+falsified the original assumption: its weights were published on 2026-07-27,
+and its licence is a bespoke grant with a revenue-triggered separate-agreement
+clause and a UI-attribution mandate — neither MIT nor Apache. `open_weight:
+true` would have passed it. `license_family: non_permissive` does not. The field
+is required on every registry row and takes one of six values — `permissive`,
+`weak_copyleft`, `strong_copyleft`, `non_permissive`, `proprietary`,
+`unverified` — and `unverified` fails **closed**: it is deliberately not
+allowlist-eligible, so an unread grant cannot pass on the strength of
+downloadable weights (CW-04 §2.5; `P6-report.md` §2). Today all three local
+Gemma 4 rows and both `unverified` hosted rows (MiniMax M3, DeepSeek V4 Pro)
+sit in that state. Like the T-numbers, the mode itself is still a label rather
+than a runtime check: nothing in `src/` reads `license_family` except the
+renderer that copies it into `model_info`, so `open_weight_only` is enforced by
+which rows a config variant carries, not by a selector.
 
 `sovereign` is stricter than `open_weight_only`: it excludes hosted-open
 infrastructure too, not just proprietary weights. Sensitive workspaces remain a
@@ -189,11 +238,15 @@ published.
 kept); 8. discard/revert rate; 9. Science lane: rubric coverage %, citation
 resolvability %, hallucinated-citation rate; 10. tokens and energy proxy
 (tokens × model size class) for the sovereignty story; 11. **`proprietary_displacement`**
-— of currently-verified successes, what % would become ceiling-stalls if T7 were
-removed today (the `hybrid` → `open_weight_only` flip trigger, tracked weekly);
-12. **rescue efficiency** — proprietary dollars that converted a verified failure
-into a verified success, divided by total proprietary dollars spent (T7 must earn
-its place in flipped outcomes, not plausible-sounding output).
+— of currently-verified successes, what % would become ceiling-stalls if **T6 and
+the Fable tier** were removed today (the `hybrid` → `open_weight_only` flip
+trigger, tracked weekly). Both, not just T6: Kimi K3 is open-weight but
+`license_family: non_permissive`, so it is equally absent under
+`open_weight_only`, and counting only T6 would overstate readiness for the flip;
+12. **rescue efficiency** — non-open-ladder dollars (T6 plus any declared Fable
+call) that converted a verified failure into a verified success, divided by total
+such dollars spent (the ceiling must earn its place in flipped outcomes, not
+plausible-sounding output).
 
 **Honesty gates (platform invariants applied to the benchmark)**
 - **Non-inferiority first:** no arm may claim a cost/speed win unless its
@@ -279,8 +332,15 @@ before deployment (same non-inferiority gate).
 - **The Perplexity arm cannot be automated** (consumer tier is app-only); its
   protocol is human-executed and therefore noisier — say so in reporting.
 - **Open-model pricing/rankings in the overview are point-in-time** (DeepSeek
-  V4 Flash, Qwen3-Coder, Gemma 4 etc.); the ladder is config, re-checked at
-  bench time, never hardcoded in claims.
+  V4 Flash/Pro, MiniMax M3, Gemma 4 etc. — Qwen3-Coder was retired from the
+  documented roster by CW-04 §2.4); the ladder is config, re-checked at bench
+  time, never hardcoded in claims.
+- **The hosted `model_id`s are vendor-documented, not vendor-confirmed.** Every
+  one of `deepseek-v4-flash`, `deepseek-v4-pro`, `minimax-m3`, `kimi-k3`,
+  `gpt-5.6-sol` carries a `TODO(native)` in `registry.yaml` and has not been
+  checked against a live `/v1/models` on that vendor's own API. The B7 gate
+  governs: pins change only after the model is reached and passes the per-model
+  tool-call smoke test.
 - The learning loop needs volume; until a few hundred verified outcomes
   exist, adaptive routing priors are weak — run static ladder + fail-up
   until the log earns the learner.
@@ -290,14 +350,21 @@ before deployment (same non-inferiority gate).
 
 ## 9. Build-order delta (appends to docs/BUILD-PLAN.md)
 
-**Phase 6a** (new, inserted before Phase 6 — see `REVISION-PLAN.md` §5): wire
-OpenRouter (allowlisted) + Together as LiteLLM deployment groups; wire T7
-(Anthropic/OpenAI/Perplexity PAYG) with per-task-class budgets and the
-boundary gate; split `unavailable` vs `model_failed` in `failup.py`; add
-displacement + rescue-efficiency reporting to `measure.py`; run the 12-task
-pilot cut (A1 vs A4) **while subscriptions are still live**, then cancel them.
-This is config + telemetry, not new architecture — it operationalizes modes
-already defined in §3.
+**Phase 6a** (inserted before Phase 6 — see `REVISION-PLAN.md` §5, which carries
+the execution record): the hosted deployment groups are wired, but not the ones
+originally drafted here. CC-P6 rendered DeepSeek (T3), Morph (T4) and the gated
+Moonshot Fable row instead of OpenRouter + Together, because CW-04 §2.2 took
+OpenRouter off the ladder and folded Together into the dormant T5 reserve. The
+proprietary ceiling is **T6, not T7** — T7 is the terminal stall, and the earlier
+"wire T7" wording predates CW-02 §3's renumbering, when the proprietary ceiling
+was T7 and `proprietary_specialist` was T6. T6 now has exactly one occupant
+(GPT-5.6 Sol, `enabled: false`); Anthropic's row is deleted, not capped; and the
+Fable tier sits outside the numbering entirely, so there is no T7 provider group
+to wire and none is planned. What remains of Phase 6a: split `unavailable` vs
+`model_failed` in `failup.py`; add displacement + rescue-efficiency reporting to
+`measure.py`; HB-0 Gates 2–4; the two-layer budget caps; and native
+confirmation of the hosted model IDs. This is config + telemetry, not new
+architecture — it operationalizes modes already defined in §3.
 
 Phase 7: lane verifiers (science citation-resolver first) + open research
 stack. Phase 8: Postgres outcome store + Langfuse wiring; migrate measure.py

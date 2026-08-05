@@ -1,23 +1,23 @@
 # 02 — Local & EduCloud versions
 
-> **Roster banner — 2026-08-04.** The provider ladder and hosted-model
-> occupants below are **superseded by `CW-04-model-roster.md`**
-> (`portage-local/docs/reports/`). CW-04 §2.2 removes OpenRouter from the
-> ladder entirely — it becomes a non-routable failover path, not a rung — and
-> §2.3 changes the occupant of every hosted tier. The rewrite that lands this
-> is CW-03 group 4, which **has not been performed**; CW-02 §6 pins it to a
-> top-model gate review. Do not act on the provider content below without
-> reading CW-04 and `CW04-HB0-drift.md` first.
+> **Ladder rewritten 2026-08-05** per `CW04-model-roster.md` and CC-P6, and
+> checked against the live `registry.yaml`. Decision record in
+> `portage-local/docs/reports/` (`CW04-model-roster.md`, `CW04-HB0-drift.md`,
+> `P6-report.md`, `P7-report.md`). Section B's `sovereign` tier and its
+> Jetstream2 framing are institutional Scale-2 content and are deliberately
+> **not** part of that rewrite (`CW04-HB0-drift.md` §3).
 
-> **Updated 2026-07 (Scale-1 transition).** The ladders below are restated in the
-> unified vocabulary of `docs/specs/10`–`11` and `REVISION-PLAN.md`: rungs are
-> `local_fast → [local_large] → remote_open_fast (Groq) → remote_open_broad
-> (OpenRouter) → [remote_open_direct] → proprietary` — dormant slots
-> bracketed; sovereign is an EduCloud-profile insert (CW02-decisions.md §3), and the version you run is a
-> **policy_mode** (`open_weight_only` / `hybrid` / `sovereign`) selected by which
-> LiteLLM config variant is loaded. The old "copy a config.json" mechanism is
-> superseded by config-variant selection; the fail-up guard still reads
-> `--tiers`. The core skeleton (two lanes, fail-up guard, plan-first
+> **Updated 2026-08-05 (Scale-1 transition).** The Scale-1 ladder below is
+> restated in the unified vocabulary of `docs/specs/10`–`11` and
+> `REVISION-PLAN.md` §3: rungs are `local_fast → [local_large] →
+> remote_open_direct (DeepSeek first-party) → remote_open_broad (Morph) →
+> [remote_open_reserve] → proprietary` — dormant slots bracketed; sovereign is
+> an EduCloud-profile insert (CW02-decisions.md §3), and the version you run is
+> a **policy_mode** (`open_weight_only` / `hybrid` / `sovereign`) selected by
+> which LiteLLM config variant is loaded. The Kimi K3 **Fable tier** sits off
+> this chain entirely and is not a rung in it. The old "copy a config.json"
+> mechanism is superseded by config-variant selection; the fail-up guard still
+> reads `--tiers`. The core skeleton (two lanes, fail-up guard, plan-first
 > decomposition) is unchanged.
 
 The versions differ only in the **escalation ladder** and, for EduCloud, **one
@@ -32,10 +32,28 @@ private, use hosted open-weight for what's too big to own, and reach proprietary
 models only as a *verified, boundary-gated* backstop.
 
 **Ladder:**
-`local_fast (iMac + MacBook, two health-checked deployments) → [local_large:
-future 128GB node, dormant] → remote_open_fast (Groq) → remote_open_broad
-(OpenRouter, allowlisted) → [remote_open_direct: Together, dormant] →
-proprietary (Anthropic/OpenAI PAYG rescue, confirm-gated)`
+`local_fast (iMac + MacBook, two health-checked deployments: Gemma 4 E4B warm
+on the iMac, Gemma 4 12B Q4 on the MacBook) → [local_large: future 128GB node,
+dormant] → remote_open_direct (DeepSeek first-party — V4 Flash cheap first
+attempt, then V4 Pro) → remote_open_broad (Morph — MiniMax M3, plus the
+"Flash Max" rung: V4 Flash re-run at reasoning_effort: max) →
+[remote_open_reserve: Groq / Together, dormant] → proprietary (GPT-5.6 Sol
+PAYG rescue, one occupant, disabled by default)`
+
+Off that chain, reached by nothing on it:
+
+`FABLE TIER — Kimi K3 (moonshot/kimi-k3)`. Not a rung, not a T-number, not
+rung 7. It is entered only by an explicit human declaration that a specific
+task warrants it, with the reason logged — never by a stall, a verifier
+failure, or any other escalation. It carries `fable_tier: true` +
+`enabled: false` in `registry.yaml`, and its weights are public under a
+non-permissive grant, so `open_weight_only` excludes it too.
+
+OpenRouter is **not on this ladder at any position**. CW-04 §2.2 demoted it to
+a non-routable failover path tagged `unbenched`, reachable only when a
+first-party endpoint health-checks down — and the mechanism that would make
+such a call path real is unbuilt (the schema has a `failover_only` field; no
+row sets it). Nothing routes through OpenRouter today.
 
 **Routing:**
 - `default → local_fast` (both machines, one rung; execution on your own hardware)
@@ -58,17 +76,27 @@ counted as a model failure.
 - Expect local to escalate more often than a Sonnet-default setup would; that's
   fine and by design. Watch `failup-log.jsonl`: if local's pass rate is low, its
   tokens are wasted motion — raise its floor model or promote `default` a rung.
-- Keep weights on the internal SSD and warm (`OLLAMA_KEEP_ALIVE=-1`); serve over
+- Keep the E4B classifier warm on the iMac (`OLLAMA_KEEP_ALIVE=-1`); serve over
   Tailscale so the MacBook and any VM share one resident model
-  (`src/portage/local-serve.sh`).
-- The `remote_open` allowlist is enforced by config (a non-allowlisted model
-  isn't a deployment); quantization floor + license live in `models.json`.
+  (`src/portage/local-serve.sh`). The 12B lands on the MacBook first,
+  deliberately: that machine carries no service co-tenancy, so it gives a clean
+  quality read. A steward swap needs a head-to-head bench against E4B under
+  live co-tenancy first (CW-04 §2.4).
+- The hosted-open allowlist is enforced by config — a model that isn't a row in
+  `registry.yaml` isn't a deployment. The gate on a row is **`license_family`,
+  not `open_weight`**: downloadable weights do not imply an acceptable grant,
+  and `unverified` fails closed. Quantization is no longer a per-row floor to
+  police, because both hosted rungs are first-party surfaces with stated
+  precision (Morph serves bf16 unquantized) rather than an aggregator free to
+  change quant under a stable model ID.
 
 This version runs fully offline for anything the local tiers can handle; the
 hosted-open and PAYG rungs need network + keys but are never on the critical path
 for local-solvable work. The end state (`open_weight_only`, `docs/specs/10`) is this
-same ladder with the `proprietary_payg` rung removed — a config-variant swap,
-triggered by `proprietary_displacement`.
+same ladder with the `proprietary_payg` rung removed **and the Fable tier gone
+with it** — K3's weights are public but its `license_family` is
+`non_permissive`, so it fails that mode on licence rather than on hosting. A
+config-variant swap, triggered by `proprietary_displacement`.
 
 ---
 
@@ -123,8 +151,15 @@ not a per-request check:
 - Non-sensitive lanes use the full `hybrid` (or `open_weight_only`) ladder.
 
 This is the pin done right: enforced by which providers exist in the config, not
-by trusting the router to behave, and not by a provider's ZDR promise (ZDR on
-`remote_open` is defense-in-depth for *ordinary* work only).
+by trusting the router to behave, and not by a provider's retention promise.
+Note what "`remote_open`" now names: **two distinct rungs**, not one
+undifferentiated hosted tier — `remote_open_direct` (T3, DeepSeek first-party)
+and `remote_open_broad` (T4, Morph), with `remote_open_reserve` (T5) dormant
+behind them. Retention posture is therefore a per-vendor property of each
+first-party surface, and it is defense-in-depth for *ordinary* work only; it is
+never the sensitive pin, and there is no aggregator left to set a ZDR filter on
+(CW-04 §2.2 took OpenRouter off the ladder). For sensitive lanes the answer is
+unchanged and stronger: those rungs are physically absent from the config.
 
 ---
 
