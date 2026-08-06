@@ -112,6 +112,30 @@
           "maximum": 100,
           "description": "IFEval instruction-following score. Null means not yet measured."
         },
+        "price_input_per_million": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "HB-2b. USD per 1M input tokens at cache-miss/standard rate, from the PROVIDER ACTUALLY BILLING THIS ROW (provider_route), not necessarily the model vendor's own direct price — a `morph`-routed row prices at Morph's rate, which can differ from the underlying model vendor's first-party rate. Null means genuinely unconfirmed; never a guessed placeholder (see price_source/price_confirmed_date, both required whenever this is non-null)."
+        },
+        "price_output_per_million": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "HB-2b. USD per 1M output tokens, same sourcing rule as price_input_per_million."
+        },
+        "price_cache_hit_per_million": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "HB-2b. USD per 1M cache-hit/cache-read input tokens, where the billing provider publishes one. Null means either no cache discount is offered at this route, or the discount exists but its rate is unconfirmed for this specific route — the build report distinguishes the two; the schema cannot."
+        },
+        "price_source": {
+          "type": ["string", "null"],
+          "description": "HB-2b. The URL the price fields above were read from, or the literal string 'local, no cost' for $0 local rows. Required whenever any price_*_per_million field is non-null."
+        },
+        "price_confirmed_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "HB-2b. ISO date (YYYY-MM-DD) the price was last checked against price_source. Prices move; a stale date is a signal to re-verify, not a permanent record."
+        },
         "enabled": {
           "type": "boolean",
           "description": "false entries still render into model_list, carrying `enabled: false` in model_info — they are NOT excluded. HB-0 Gate 2 requires /v1/models to list every alias the deployment declares, so dropping a disabled row would hide an alias entirely; downstream tooling (failup.py, herdr-meters) filters on model_info.enabled instead. proprietary_code/proprietary_research exist disabled so HB-2's rescue path flips a flag rather than adding config. To make a deployment genuinely unreachable — the Scale-2 student lane's requirement — REMOVE the row from that lane's registry; `enabled: false` is not an isolation mechanism."
