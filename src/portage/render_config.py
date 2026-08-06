@@ -119,6 +119,38 @@ def validate_cross_entry(models: list[dict]) -> list[str]:
     return problems
 
 
+def render_price_table(models: list[dict]) -> dict:
+    """HB-2b: registry price fields, grouped by alias, as plain JSON — the
+    stdlib-readable side-car `measure.py` and `tier_pricing.py` consume
+    instead of taking a PyYAML dependency. `measure.py` is deliberately
+    stdlib-only (see its own module docstring's "dependencies = []" idiom,
+    same as failup.py); registry.yaml is YAML, so something with a YAML
+    dependency (this script already has one) has to be the one that flattens
+    it. Written alongside the other rendered outputs — same gitignored
+    `litellm/` build-artifact directory, same "never hand-edit, re-render
+    instead" rule.
+
+    Every field, price or not, so a caller can tell "priced at $0" apart from
+    "no price on this row yet" apart from "this row doesn't exist." Grouped
+    by alias, not a flat list, because `tier_pricing.py`'s whole job is
+    asking "how many enabled occupants does this alias have," which is an
+    alias-keyed question.
+    """
+    by_alias: dict[str, list[dict]] = {}
+    for m in models:
+        by_alias.setdefault(m["alias"], []).append({
+            "model_id": m["model_id"],
+            "provider_route": m["provider_route"],
+            "enabled": m.get("enabled", False),
+            "price_input_per_million": m.get("price_input_per_million"),
+            "price_output_per_million": m.get("price_output_per_million"),
+            "price_cache_hit_per_million": m.get("price_cache_hit_per_million"),
+            "price_source": m.get("price_source"),
+            "price_confirmed_date": m.get("price_confirmed_date"),
+        })
+    return by_alias
+
+
 def render_model_list(models: list[dict]) -> dict:
     """Registry entries -> a LiteLLM `model_list`. Every entry renders,
     enabled or not — Gate 2 requires /v1/models to list exactly the seven
@@ -314,6 +346,15 @@ def main(argv: list[str] | None = None) -> int:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     config_path.write_text(config_text, encoding="utf-8")
     model_list_path.write_text(model_list_text, encoding="utf-8")
+
+    # HB-2b: not part of --check's diff set above (that mode returns before
+    # reaching here; this line only runs on a live write). Not covered by CI's
+    # example-profile check either — regenerated unconditionally instead.
+    price_table_path = args.out_dir / "price_table.generated.json"
+    price_table_path.write_text(
+        json.dumps(render_price_table(registry["models"]), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     enabled = sum(1 for m in registry["models"] if m.get("enabled"))
     disabled = len(registry["models"]) - enabled

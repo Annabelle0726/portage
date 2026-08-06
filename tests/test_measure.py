@@ -17,12 +17,15 @@ def _write_log(project, entries):
             f.write(json.dumps(e) + "\n")
 
 
-def _attempt(run_id, tier, model, ok, reason, category, attempt_in_tier=0):
+def _attempt(run_id, tier, model, ok, reason, category, attempt_in_tier=0,
+             cost_usd=None, tokens_in=None, tokens_out=None, cache_read_tokens=None):
     return {
         "ts": "2026-08-06T00:00:00+00:00", "run_id": run_id, "task": "t",
         "tier": tier, "model": model, "effort": None,
         "attempt_in_tier": attempt_in_tier, "ok": ok, "reason": reason,
         "reason_code": None, "category": category, "seconds": 0.1,
+        "cost_usd": cost_usd, "tokens_in": tokens_in, "tokens_out": tokens_out,
+        "cache_read_tokens": cache_read_tokens,
     }
 
 
@@ -70,3 +73,47 @@ def test_per_tier_recall_is_pass_share_of_attempts_that_reached_the_tier(
     # tier 0: 3 attempts reached it (r1, r2, r3), 1 passed (r2) -> 33.3%
     # tier 1: 2 attempts reached it (r1, r3), 2 passed -> 100%
     assert s["per_tier_recall"] == {0: 33.3, 1: 100.0}
+
+
+# ------------------------------------------------- HB-2b: three-price / CNA --
+
+def test_runner_reported_cost_sums_by_tier(measure, tmp_path):
+    project = tmp_path
+    _write_log(project, [
+        _attempt("r1", 0, "sonnet", False, "lint-failed", "capability", cost_usd=0.01),
+        _attempt("r1", 1, "opus", True, "ok", "ok", cost_usd=0.05),
+        _attempt("r2", 0, "sonnet", True, "ok", "ok", cost_usd=0.02),
+    ])
+
+    s = measure.summarize(str(project), None, None)
+
+    assert s["cost_by_tier_usd"] == {0: 0.03, 1: 0.05}
+
+
+def test_cna_is_recall_over_cost_per_tier(measure, tmp_path):
+    project = tmp_path
+    _write_log(project, [
+        # tier 0: 2 attempts, 1 passed -> recall 50%, cost 0.10 -> cna 0.5/0.10=5.0
+        _attempt("r1", 0, "sonnet", False, "lint-failed", "capability", cost_usd=0.05),
+        _attempt("r2", 0, "sonnet", True, "ok", "ok", cost_usd=0.05),
+    ])
+
+    s = measure.summarize(str(project), None, None)
+
+    assert s["cna_by_tier"] == {0: 5.0}
+
+
+def test_unpriceable_rung_counted_not_dropped(measure, tmp_path):
+    project = tmp_path
+    _write_log(project, [
+        _attempt("r1", 0, "some-future-rung", True, "ok", "ok"),  # no cost_usd,
+                                                                   # not a mapped rung
+    ])
+
+    s = measure.summarize(str(project), None, None)
+
+    assert s["cost_by_tier_usd"] == {}
+    assert s["cost_unknown_by_basis"] == {"unmapped-rung": 1}
+    # the run itself is still counted normally elsewhere — not dropped
+    assert s["tasks"] == 1
+    assert s["floor_pass_rate"] == 100.0

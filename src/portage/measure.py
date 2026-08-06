@@ -48,6 +48,18 @@ def _load_failure_classes():
 failure_classes = _load_failure_classes()
 
 
+def _load_tier_pricing():
+    """`tier_pricing.py`, loaded by path — same idiom as `_load_runlog()`."""
+    path = Path(__file__).resolve().parent / "tier_pricing.py"
+    spec = importlib.util.spec_from_file_location("portage_tier_pricing", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+tier_pricing = _load_tier_pricing()
+
+
 def _load_runlog():
     """The shared run reconstruction (`runlog.py`), loaded by path.
 
@@ -66,6 +78,19 @@ def _load_runlog():
 
 
 runlog = _load_runlog()
+
+
+def _load_price_table(project: str) -> dict:
+    """HB-2b: the JSON side-car `render_config.py::render_price_table()`
+    writes to `<project>/litellm/price_table.generated.json`. Absent (never
+    rendered, or rendered against an older schema without price fields) is
+    NOT an error here — every caller of `tier_pricing.price_for_rung()`
+    already handles an empty price table the same way it handles an unpriced
+    row, so summarize() degrades to "no price data" rather than raising."""
+    path = Path(project) / "litellm" / "price_table.generated.json"
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text())
 
 
 def state(project: str) -> Path:
@@ -131,17 +156,25 @@ def snapshot(args) -> None:
 # Sources: CW-04 §2.5 and P7-report's ambiguity note, both in
 # `portage-local/docs/reports/`. Mirrored in registry.schema.json's
 # `license_family` description — keep the two in sync if either changes.
-# ── HB-2 STATUS ──────────────────────────────────────────────────────────────
+# ── HB-2 / HB-2b STATUS ──────────────────────────────────────────────────────
 # `LINE-P-ROADMAP.md`'s S1 entry asks for four things from this module:
-# per-class priors, per-tier recall, three-price accounting, and "CNA." The
-# first two are below (`per_class_failures`, `per_tier_recall`). The other two
-# are deliberately NOT built here: "three-price accounting" has no defined
-# meaning anywhere in this repo or portage-local (grepped both in full), and
-# "CNA" is used twice in docs/BUILD-PLAN.md and never expanded or defined —
-# building either from a guess risks poisoning exactly the collapse-detection
-# signal BUILD-PLAN.md says this logging exists to establish. See
-# `portage-local/docs/prompts/CC-HB2-failure-taxonomy-and-rescue-budget.md`
-# §1.2-1.3 for the open questions; answer those before adding either field.
+# per-class priors, per-tier recall, three-price accounting, and "CNA." All
+# four are below. Two notes on how, not just that:
+#
+# THREE-PRICE ACCOUNTING is really "price, priced two ways, plus a derived
+# third number" — list price (`tier_pricing.price_for_rung`'s registry-exact
+# path), cache-adjusted price (same function, applied automatically whenever
+# a row's confirmed cache-hit rate and the attempt's cache_read_tokens are
+# both present — see tier_pricing.py, it is not a separate code path), and
+# effective price per verified success, which `cna_by_tier` is the reciprocal
+# of rather than a fourth independent calculation.
+#
+# CNA'S DEFINITION IS ADOPTED, NOT CITED. The real "Herdr Build-Ready
+# Reference" document that was supposed to define it is not reachable from
+# this repo, Notion, or Google Drive (HB2b-report.md §0, §4) — checked, not
+# assumed missing. CNA here means verified-success rate ÷ $ spent per tier.
+# If the real definition ever surfaces, diff it against this before trusting
+# any dashboard or revert decision built on `cna_by_tier`.
 def summarize(project: str, since, until) -> dict:
     """The headline numbers, over ADMISSIBLE runs only.
 
@@ -190,6 +223,44 @@ def summarize(project: str, since, until) -> dict:
             else:
                 class_counts[failure_classes.classify(a["reason"])] += 1
 
+    # HB-2b: three-price accounting and CNA, over the same admissible,
+    # tier-reached population as per_tier_recall above — reusing tier_seen so
+    # CNA's denominator (per-tier success rate) and numerator ($ per tier) are
+    # counted over the identical set of attempts. `cost_unknown` is NOT
+    # silently dropped: every attempt tier_pricing.py can't price is counted
+    # by its `basis` string, same "no silent exclusion" rule as
+    # `inadmissible_runs` above. Adopted definition, not a cited one — see
+    # HB2b-report.md §4: the real "CNA" source document isn't reachable from
+    # this repo, Notion, or Drive, so this is CNA = verified-success rate ÷ $
+    # spent per tier, i.e. the reciprocal of effective-price-per-verified-
+    # success — same signal, inverted for readability, not independent
+    # evidence of anything the cost-per-tier number doesn't already show.
+    price_table = _load_price_table(project)
+    cost_by_tier = defaultdict(float)
+    cost_unknown = defaultdict(int)
+    for r in admissible:
+        for a in r["attempts"]:
+            if runlog.attempt_category(a) == runlog.CAT_AVAILABILITY:
+                continue
+            price, basis = tier_pricing.price_for_rung(
+                a["model"], cost_usd=a.get("cost_usd"),
+                tokens_in=a.get("tokens_in"), tokens_out=a.get("tokens_out"),
+                cache_read_tokens=a.get("cache_read_tokens"),
+                price_table=price_table,
+            )
+            if price is None:
+                cost_unknown[basis] += 1
+            else:
+                cost_by_tier[a["tier"]] += price
+
+    per_tier_cna = {}
+    for t in tier_seen:
+        recall = _pct(tier_won.get(t, 0), tier_seen[t])
+        cost = cost_by_tier.get(t, 0.0)
+        per_tier_cna[t] = (
+            round((recall / 100) / cost, 4) if recall is not None and cost > 0 else None
+        )
+
     for r in admissible:
         if r["stalled"]:
             stalled += 1
@@ -229,6 +300,9 @@ def summarize(project: str, since, until) -> dict:
             tier: _pct(tier_won.get(tier, 0), tier_seen[tier])
             for tier in sorted(tier_seen)
         },
+        "cost_by_tier_usd": {t: round(c, 4) for t, c in sorted(cost_by_tier.items())},
+        "cost_unknown_by_basis": dict(sorted(cost_unknown.items())),
+        "cna_by_tier": dict(sorted(per_tier_cna.items())),
     }
 
 
@@ -259,7 +333,15 @@ def _fmt(label, s: dict) -> str:
         f"  per-tier recall:    {s['per_tier_recall']}   "
         "(of attempts that reached the tier, share that passed)",
         f"  per-class failures: {s['per_class_failures']}   (HB-2 five-class priors)",
+        f"  $ by tier:          {s['cost_by_tier_usd']}   (HB-2b, admissible attempts)",
+        f"  CNA by tier:        {s['cna_by_tier']}   "
+        "(adopted def: success rate / $ — see measure.py's module note)",
     ]
+    if s["cost_unknown_by_basis"]:
+        lines.append(
+            f"  cost unknown for:   {s['cost_unknown_by_basis']}   "
+            "(NOT dropped from the run counts above, just unpriced)"
+        )
     if q:
         lines += [
             f"  opus cap consumed:  {q['opus_cap_consumed_pts']} pts",

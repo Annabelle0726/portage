@@ -116,6 +116,43 @@ def runner_availability_failure(proc: subprocess.CompletedProcess) -> str | None
     return None
 
 
+_EMPTY_USAGE = {"tokens_in": None, "tokens_out": None,
+                "cache_read_tokens": None, "cost_usd": None}
+
+
+def _runner_usage(proc: subprocess.CompletedProcess) -> dict:
+    """Best-effort token/cost capture from `claude -p --output-format json`.
+
+    HB-2b: `--output-format json` is now always appended to the runner
+    invocation (see run_ladder). Claude Code's documented print-mode JSON
+    result carries `total_cost_usd` and a `usage` object with
+    `input_tokens`/`output_tokens`/`cache_read_input_tokens` — this is the
+    ONLY reliable source of per-attempt cost for the `sonnet`/`opus` rungs,
+    which are Lane A subscription-billed and deliberately have no row in
+    registry.yaml (CC-P6 deleted `proprietary_code` outright; see that row's
+    comment). For LiteLLM-routed rungs the token counts feed measure.py's
+    registry price lookup instead (see tier_pricing.py).
+
+    Never raises: a runner that doesn't emit this JSON shape (the test
+    fixtures' stub runner, an availability failure that produced no stdout,
+    an older Claude Code build) yields `_EMPTY_USAGE`, not an error — this is
+    strictly additive telemetry, and must never be able to break the ladder
+    the way a real model/network call cannot be allowed to (see the module
+    docstring's own "no model call in the guard itself" principle).
+    """
+    try:
+        doc = json.loads(proc.stdout)
+        u = doc.get("usage") or {}
+        return {
+            "tokens_in": u.get("input_tokens"),
+            "tokens_out": u.get("output_tokens"),
+            "cache_read_tokens": u.get("cache_read_input_tokens"),
+            "cost_usd": doc.get("total_cost_usd"),
+        }
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return dict(_EMPTY_USAGE)
+
+
 DEFAULT_GATE_CMDS = (
     ["uv", "run", "ruff", "check", "."],
     ["uv", "run", "pytest", "-q"],
@@ -281,7 +318,8 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
             #            NOT an error: the CLI warns and silently uses default effort,
             #            so a typo would quietly flatten the ladder. Tiers that want
             #            default effort must set effort to null, which omits the flag.
-            cmd = runner.split() + [attempt_task, "--model", model]
+            cmd = runner.split() + [attempt_task, "--model", model,
+                                    "--output-format", "json"]
             if effort:
                 cmd += ["--effort", effort]
             try:
@@ -289,6 +327,9 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                 avail_reason = runner_availability_failure(proc)
             except subprocess.TimeoutExpired:
                 avail_reason = "unavailable:timeout"
+                proc = None
+
+            usage = _runner_usage(proc) if proc is not None else _EMPTY_USAGE
 
             verdict = None
             if avail_reason:
@@ -327,6 +368,9 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                     "ok": ok, "reason": reason, "reason_code": reason_code,
                     "category": category,
                     "seconds": round(time.time() - t0, 1),
+                    # HB-2b: best-effort, null when unavailable — see
+                    # _runner_usage()'s docstring for what these mean per rung.
+                    **usage,
                 }) + "\n")
 
             if ok:

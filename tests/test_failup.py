@@ -52,6 +52,33 @@ def test_runner_availability_failure_clean_on_normal_output(failup):
     assert failup.runner_availability_failure(P()) is None
 
 
+# -------------------------------------------------------------- _runner_usage --
+
+def test_runner_usage_parses_claude_code_json_result(failup):
+    class P:
+        stdout = ('{"type":"result","total_cost_usd":0.042,'
+                  '"usage":{"input_tokens":1000,"output_tokens":200,'
+                  '"cache_read_input_tokens":300}}')
+    assert failup._runner_usage(P()) == {
+        "tokens_in": 1000, "tokens_out": 200,
+        "cache_read_tokens": 300, "cost_usd": 0.042,
+    }
+
+
+def test_runner_usage_empty_on_non_json_stdout(failup):
+    class P:
+        stdout = "not json, e.g. the stub runner's empty output"
+    assert failup._runner_usage(P()) == failup._EMPTY_USAGE
+
+
+def test_runner_usage_empty_when_usage_key_absent(failup):
+    class P:
+        stdout = '{"type":"result","total_cost_usd":0.01}'
+    u = failup._runner_usage(P())
+    assert u == {"tokens_in": None, "tokens_out": None,
+                 "cache_read_tokens": None, "cost_usd": 0.01}
+
+
 # --------------------------------------------------------------- run_ladder --
 
 def test_ladder_walks_tiers_in_order(failup, git_repo, tmp_path, monkeypatch):
@@ -152,6 +179,43 @@ def test_stash_reset_recovery_restores_clean_tree_between_attempts(
     assert (git_repo / "marker.txt").read_text() == "PASS"
     status = failup.git(str(git_repo), "status", "--porcelain").stdout
     assert status.strip().splitlines() == ["M marker.txt"]
+
+
+def test_log_entries_carry_usage_fields_null_for_a_non_json_runner(
+        failup, git_repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("STUB_COUNTER_FILE", str(tmp_path / ".stub-counter"))
+    monkeypatch.setenv("STUB_PLAN", "ok")
+    tiers = _tiers(git_repo, ["r0"])
+
+    failup.run_ladder("do the thing", str(git_repo), str(tiers), STUB_RUNNER,
+                      gate_cmds=(NOOP_LINT, CHECK_MARKER))
+
+    entry = _log_entries(git_repo)[0]
+    assert entry["tokens_in"] is None
+    assert entry["tokens_out"] is None
+    assert entry["cache_read_tokens"] is None
+    assert entry["cost_usd"] is None
+
+
+def test_output_format_json_is_always_requested(failup, git_repo, tmp_path, monkeypatch):
+    monkeypatch.setenv("STUB_COUNTER_FILE", str(tmp_path / ".stub-counter"))
+    monkeypatch.setenv("STUB_PLAN", "ok")
+    tiers = _tiers(git_repo, ["r0"])
+
+    seen_cmds = []
+    real_run = failup.run
+
+    def spy(cmd, cwd=None, timeout=1800):
+        seen_cmds.append(cmd)
+        return real_run(cmd, cwd=cwd, timeout=timeout)
+
+    monkeypatch.setattr(failup, "run", spy)
+    failup.run_ladder("do the thing", str(git_repo), str(tiers), STUB_RUNNER,
+                      gate_cmds=(NOOP_LINT, CHECK_MARKER))
+
+    runner_cmd = next(c for c in seen_cmds if c[0] != "git")
+    assert "--output-format" in runner_cmd
+    assert runner_cmd[runner_cmd.index("--output-format") + 1] == "json"
 
 
 def test_availability_and_capability_failures_are_distinguishable(
