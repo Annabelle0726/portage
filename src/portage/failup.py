@@ -21,6 +21,12 @@ the verifier contract (`code_profile.py` here, `SPEC.md` in the sibling
 verifier-contract repository), reached through `code_verdict()`. The escalation
 logic below is unchanged and now reads a verdict document instead of a
 `(bool, reason)` pair.
+
+HB-2 adds one same-tier retry (`failure_classes.MAX_ATTEMPTS_PER_TIER`, and see
+that module's docstring for the five-class taxonomy it names): a tier gets up
+to two attempts before the ladder escalates, and a retry's prompt carries the
+prior attempt's structured verdict (`_retry_feedback()`) so the SAME stage sees
+what it got wrong, rather than the retry being a blind repeat.
 """
 import argparse
 import importlib.util
@@ -131,6 +137,21 @@ _LEGACY_REASON = {
 }
 
 _CODE_PROFILE = None
+_FAILURE_CLASSES = None
+
+
+def failure_classes():
+    """The five-class taxonomy module, loaded by path — same idiom as
+    `code_profile()` above, same reason (single-file `uv run --script` tool,
+    not a package member)."""
+    global _FAILURE_CLASSES
+    if _FAILURE_CLASSES is None:
+        path = Path(__file__).resolve().parent / "failure_classes.py"
+        spec = importlib.util.spec_from_file_location("portage_failure_classes", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _FAILURE_CLASSES = module
+    return _FAILURE_CLASSES
 
 
 def code_profile():
@@ -188,6 +209,28 @@ def code_verdict(project: str, gate_cmds=None) -> dict:
     return profile.verify(request)
 
 
+def _retry_feedback(task: str, category: str, verdict: dict | None) -> str:
+    """The task prompt for a same-tier retry, carrying the PRIOR verdict —
+    structured failure output, returned to the failing stage only (HB-2).
+
+    Only a capability failure has a verdict document to draw from; an
+    availability retry gets no feedback because the contract never ran
+    (SPEC.md section 2.1 — there is nothing structured to hand back). The
+    feedback is `detail` plus each check's `status`, never raw command
+    output, because raw lint/test output can quote candidate source lines and
+    the verdict document is forbidden from reproducing them (SPEC.md
+    section 6) — this must not smuggle that back in through the retry prompt.
+    """
+    if category != "capability" or not verdict:
+        return task
+    checks = ", ".join(
+        f"{e['check']}={e['status']}" for e in verdict.get("evidence", [])
+        if e.get("status") not in (None, "not_configured")
+    )
+    return (f"{task}\n\n[failup retry] the previous attempt failed: "
+            f"{verdict.get('detail', '')} ({checks}). Fix that specific problem.")
+
+
 def run_ladder(task: str, project: str, tiers_file: str, runner: str,
                max_tier: int | None = None, start_tier: int = 0,
                gate_cmds=None) -> int:
@@ -213,76 +256,100 @@ def run_ladder(task: str, project: str, tiers_file: str, runner: str,
               file=sys.stderr)
     base = git(project, "rev-parse", "HEAD").stdout.strip()
 
+    fc = failure_classes()
+
     for tier in range(start_tier, ceiling + 1):
         model = TIERS[tier]["model"]
         effort = TIERS[tier]["effort"]
-        t0 = time.time()
-        # VERIFIED against Claude Code 2.1.207 (see docs/phase-1-findings.md):
-        #   --model  takes a bare name/alias ('sonnet', 'claude-sonnet-5') or any
-        #            string the configured gateway resolves (e.g. a LiteLLM model
-        #            group). The "provider,model" comma form is CCR Router syntax
-        #            and is REJECTED here — it must not appear in a tiers file.
-        #   --effort takes exactly low|medium|high|xhigh|max. An unknown value is
-        #            NOT an error: the CLI warns and silently uses default effort,
-        #            so a typo would quietly flatten the ladder. Tiers that want
-        #            default effort must set effort to null, which omits the flag.
-        cmd = runner.split() + [task, "--model", model]
-        if effort:
-            cmd += ["--effort", effort]
-        try:
-            proc = run(cmd, cwd=project)
-            avail_reason = runner_availability_failure(proc)
-        except subprocess.TimeoutExpired:
-            avail_reason = "unavailable:timeout"
+        attempt_task = task
+        prev_category = prev_verdict = None
 
-        if avail_reason:
-            # The SUBJECT was unreachable — never reaches the verifier at all,
-            # so there is no verdict document and therefore no reason_code. The
-            # contract has no availability namespace ON PURPOSE (SPEC.md §2.1),
-            # so `reason_code: null` here is the correct record, not a gap: it
-            # says "no verifier judged this", which is exactly the fact
-            # `category` also carries.
-            ok, reason, reason_code, category = (
-                False, avail_reason, None, "availability")
-        else:
-            # By the time we get here the availability case is already filtered
-            # out, so an empty change set IS a capability verdict (SPEC.md §2.1).
-            verdict = code_verdict(project, gate_cmds)
-            ok = verdict["verdict"] == "pass"
-            # A `pass` carries no reason code (schema/verdict.schema.json
-            # requires one only on `fail`), so this is None on success too.
-            reason_code = verdict.get("reason_code")
-            reason = "ok" if ok else _LEGACY_REASON[verdict["reason_code"]]
-            category = "ok" if ok else "capability"
+        # HB-2: up to MAX_ATTEMPTS_PER_TIER attempts at this tier before the
+        # ladder escalates — a class that fails twice in a row here is this
+        # tier's answer, not noise; see failure_classes.py's module docstring.
+        for attempt in range(fc.MAX_ATTEMPTS_PER_TIER):
+            if attempt > 0:
+                attempt_task = _retry_feedback(task, prev_category, prev_verdict)
 
-        with log.open("a") as f:
-            f.write(json.dumps({
-                "ts": datetime.now(UTC).isoformat(), "run_id": run_id,
-                "task": task,                # needed for distillation (docs/specs/09)
-                "tier": tier, "model": model, "effort": effort,
-                # BOTH, not one. `reason` is the legacy string this log has
-                # carried since before the contract existed and is what keeps
-                # month-old records meaning what they said. `reason_code` is the
-                # registry-governed code, verbatim from the verdict document,
-                # and is what a new consumer should branch on: the registry is
-                # append-only (SPEC.md §7.2), whereas a free-text reason can be
-                # reworded invisibly to someone reading last month's logs.
-                "ok": ok, "reason": reason, "reason_code": reason_code,
-                "category": category,
-                "seconds": round(time.time() - t0, 1),
-            }) + "\n")
+            t0 = time.time()
+            # VERIFIED against Claude Code 2.1.207 (see docs/phase-1-findings.md):
+            #   --model  takes a bare name/alias ('sonnet', 'claude-sonnet-5') or any
+            #            string the configured gateway resolves (e.g. a LiteLLM model
+            #            group). The "provider,model" comma form is CCR Router syntax
+            #            and is REJECTED here — it must not appear in a tiers file.
+            #   --effort takes exactly low|medium|high|xhigh|max. An unknown value is
+            #            NOT an error: the CLI warns and silently uses default effort,
+            #            so a typo would quietly flatten the ladder. Tiers that want
+            #            default effort must set effort to null, which omits the flag.
+            cmd = runner.split() + [attempt_task, "--model", model]
+            if effort:
+                cmd += ["--effort", effort]
+            try:
+                proc = run(cmd, cwd=project)
+                avail_reason = runner_availability_failure(proc)
+            except subprocess.TimeoutExpired:
+                avail_reason = "unavailable:timeout"
 
-        if ok:
-            print(f"[failup] clean pass at tier {tier} ({model}, effort={effort})")
-            return 0
+            verdict = None
+            if avail_reason:
+                # The SUBJECT was unreachable — never reaches the verifier at all,
+                # so there is no verdict document and therefore no reason_code. The
+                # contract has no availability namespace ON PURPOSE (SPEC.md §2.1),
+                # so `reason_code: null` here is the correct record, not a gap: it
+                # says "no verifier judged this", which is exactly the fact
+                # `category` also carries.
+                ok, reason, reason_code, category = (
+                    False, avail_reason, None, "availability")
+            else:
+                # By the time we get here the availability case is already filtered
+                # out, so an empty change set IS a capability verdict (SPEC.md §2.1).
+                verdict = code_verdict(project, gate_cmds)
+                ok = verdict["verdict"] == "pass"
+                # A `pass` carries no reason code (schema/verdict.schema.json
+                # requires one only on `fail`), so this is None on success too.
+                reason_code = verdict.get("reason_code")
+                reason = "ok" if ok else _LEGACY_REASON[verdict["reason_code"]]
+                category = "ok" if ok else "capability"
 
-        print(f"[failup] tier {tier} ({model}) failed ({category}): {reason}",
-              file=sys.stderr)
-        if tier < ceiling:
-            # park the failed attempt (recoverable), reset clean, escalate
-            git(project, "stash", "push", "-u", "-m", f"failup-t{tier}-{reason}")
+            with log.open("a") as f:
+                f.write(json.dumps({
+                    "ts": datetime.now(UTC).isoformat(), "run_id": run_id,
+                    "task": task,                # needed for distillation (docs/specs/09)
+                    "tier": tier, "model": model, "effort": effort,
+                    "attempt_in_tier": attempt,  # 0-indexed; HB-2 retry cap
+                    # BOTH, not one. `reason` is the legacy string this log has
+                    # carried since before the contract existed and is what keeps
+                    # month-old records meaning what they said. `reason_code` is the
+                    # registry-governed code, verbatim from the verdict document,
+                    # and is what a new consumer should branch on: the registry is
+                    # append-only (SPEC.md §7.2), whereas a free-text reason can be
+                    # reworded invisibly to someone reading last month's logs.
+                    "ok": ok, "reason": reason, "reason_code": reason_code,
+                    "category": category,
+                    "seconds": round(time.time() - t0, 1),
+                }) + "\n")
+
+            if ok:
+                print(f"[failup] clean pass at tier {tier} ({model}, effort={effort})")
+                return 0
+
+            print(f"[failup] tier {tier} ({model}) attempt {attempt} failed "
+                  f"({category}): {reason}", file=sys.stderr)
+
+            last_attempt = attempt == fc.MAX_ATTEMPTS_PER_TIER - 1
+            if last_attempt and tier == ceiling:
+                # at the ceiling, on the last attempt, leave the tree for a human
+                break
+
+            # park the failed attempt (recoverable), reset clean
+            git(project, "stash", "push", "-u", "-m",
+                f"failup-t{tier}a{attempt}-{reason}")
             git(project, "reset", "--hard", base)
-        # at the ceiling, leave the attempt in the tree for a human to inspect
+
+            if not last_attempt:
+                print(f"[failup] retrying tier {tier} ({model}) once more before "
+                      "escalating", file=sys.stderr)
+                prev_category, prev_verdict = category, verdict
 
     capped = max_tier is not None and ceiling < len(TIERS) - 1
     msg = ("budget ceiling reached (quota-capped below the top tier); STOPPED for a "

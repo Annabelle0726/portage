@@ -35,6 +35,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 
+def _load_failure_classes():
+    """`failure_classes.py`, loaded by path — same idiom as `_load_runlog()`
+    below, same reason."""
+    path = Path(__file__).resolve().parent / "failure_classes.py"
+    spec = importlib.util.spec_from_file_location("portage_failure_classes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+failure_classes = _load_failure_classes()
+
+
 def _load_runlog():
     """The shared run reconstruction (`runlog.py`), loaded by path.
 
@@ -118,6 +131,17 @@ def snapshot(args) -> None:
 # Sources: CW-04 §2.5 and P7-report's ambiguity note, both in
 # `portage-local/docs/reports/`. Mirrored in registry.schema.json's
 # `license_family` description — keep the two in sync if either changes.
+# ── HB-2 STATUS ──────────────────────────────────────────────────────────────
+# `LINE-P-ROADMAP.md`'s S1 entry asks for four things from this module:
+# per-class priors, per-tier recall, three-price accounting, and "CNA." The
+# first two are below (`per_class_failures`, `per_tier_recall`). The other two
+# are deliberately NOT built here: "three-price accounting" has no defined
+# meaning anywhere in this repo or portage-local (grepped both in full), and
+# "CNA" is used twice in docs/BUILD-PLAN.md and never expanded or defined —
+# building either from a guess risks poisoning exactly the collapse-detection
+# signal BUILD-PLAN.md says this logging exists to establish. See
+# `portage-local/docs/prompts/CC-HB2-failure-taxonomy-and-rescue-budget.md`
+# §1.2-1.3 for the open questions; answer those before adding either field.
 def summarize(project: str, since, until) -> dict:
     """The headline numbers, over ADMISSIBLE runs only.
 
@@ -146,6 +170,26 @@ def summarize(project: str, since, until) -> dict:
 
     escalated = stalled = floor_pass = 0
     win_tier = defaultdict(int)
+    # HB-2: per-class priors and per-tier recall, over ADMISSIBLE attempts only
+    # — the same population as every other capability statistic in this
+    # function, for the same reason (an attempt at a tier that was never
+    # really reached says nothing about that tier's failure classes either).
+    # `class_counts[cls]` is every FAILED attempt of that class; `tier_seen`
+    # and `tier_won` give per-tier recall as tier_won/tier_seen — "of the
+    # attempts that actually reached this tier, how many resolved there."
+    class_counts = defaultdict(int)
+    tier_seen = defaultdict(int)
+    tier_won = defaultdict(int)
+    for r in admissible:
+        for a in r["attempts"]:
+            if runlog.attempt_category(a) == runlog.CAT_AVAILABILITY:
+                continue  # never reached the tier; not evidence about it
+            tier_seen[a["tier"]] += 1
+            if a["ok"]:
+                tier_won[a["tier"]] += 1
+            else:
+                class_counts[failure_classes.classify(a["reason"])] += 1
+
     for r in admissible:
         if r["stalled"]:
             stalled += 1
@@ -180,6 +224,11 @@ def summarize(project: str, since, until) -> dict:
         "ceiling_stall_rate": _pct(stalled, n_adm),
         "win_tier_distribution": dict(sorted(win_tier.items())),
         "quota": quota,
+        "per_class_failures": dict(sorted(class_counts.items())),
+        "per_tier_recall": {
+            tier: _pct(tier_won.get(tier, 0), tier_seen[tier])
+            for tier in sorted(tier_seen)
+        },
     }
 
 
@@ -207,6 +256,9 @@ def _fmt(label, s: dict) -> str:
         f"  escalation rate:    {s['escalation_rate']}%",
         f"  ceiling-stall rate: {s['ceiling_stall_rate']}%   <- the quality guardrail",
         f"  win tier dist:      {s['win_tier_distribution']}",
+        f"  per-tier recall:    {s['per_tier_recall']}   "
+        "(of attempts that reached the tier, share that passed)",
+        f"  per-class failures: {s['per_class_failures']}   (HB-2 five-class priors)",
     ]
     if q:
         lines += [

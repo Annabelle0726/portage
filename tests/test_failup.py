@@ -59,8 +59,10 @@ def test_ladder_walks_tiers_in_order(failup, git_repo, tmp_path, monkeypatch):
     # non-ignored file inside it (the same reason the log needs .gitignore —
     # see the git_repo fixture), which would reset the stub's call count to 0
     # on every escalation and repeat tier 0 forever instead of progressing.
+    # HB-2: each tier gets up to two attempts before escalating, so a tier
+    # that's really incapable exhausts both before the ladder moves on.
     monkeypatch.setenv("STUB_COUNTER_FILE", str(tmp_path / ".stub-counter"))
-    monkeypatch.setenv("STUB_PLAN", "capability,capability,ok")
+    monkeypatch.setenv("STUB_PLAN", "capability,capability,capability,capability,ok")
     tiers = _tiers(git_repo, ["r0", "r1", "r2"])
 
     rc = failup.run_ladder("do the thing", str(git_repo), str(tiers), STUB_RUNNER,
@@ -68,9 +70,9 @@ def test_ladder_walks_tiers_in_order(failup, git_repo, tmp_path, monkeypatch):
 
     assert rc == 0
     entries = _log_entries(git_repo)
-    assert [e["tier"] for e in entries] == [0, 1, 2]
-    assert [e["model"] for e in entries] == ["r0", "r1", "r2"]
-    assert [e["ok"] for e in entries] == [False, False, True]
+    assert [e["tier"] for e in entries] == [0, 0, 1, 1, 2]
+    assert [e["model"] for e in entries] == ["r0", "r0", "r1", "r1", "r2"]
+    assert [e["ok"] for e in entries] == [False, False, False, False, True]
 
 
 def test_max_tier_stops_below_ceiling_with_correct_message(failup, git_repo, tmp_path,
@@ -84,10 +86,54 @@ def test_max_tier_stops_below_ceiling_with_correct_message(failup, git_repo, tmp
 
     assert rc == 1
     entries = _log_entries(git_repo)
-    assert [e["tier"] for e in entries] == [0, 1]     # never reached r2/r3
+    # HB-2: two attempts per tier before escalating, so r0 and r1 each log twice.
+    assert [e["tier"] for e in entries] == [0, 0, 1, 1]     # never reached r2/r3
+    assert [e["attempt_in_tier"] for e in entries] == [0, 1, 0, 1]
     err = capsys.readouterr().err
     assert "budget ceiling reached (quota-capped below the top tier)" in err
     assert "did not spend scarce Opus quota" in err
+
+
+def test_retry_same_tier_once_before_escalating(failup, git_repo, tmp_path, monkeypatch):
+    # HB-2: tier 0 fails twice (exhausting its retry) before the ladder moves
+    # to tier 1, rather than escalating on the very first miss.
+    monkeypatch.setenv("STUB_COUNTER_FILE", str(tmp_path / ".stub-counter"))
+    monkeypatch.setenv("STUB_PLAN", "capability,capability,ok")
+    tiers = _tiers(git_repo, ["r0", "r1"])
+
+    rc = failup.run_ladder("do the thing", str(git_repo), str(tiers), STUB_RUNNER,
+                           gate_cmds=(NOOP_LINT, CHECK_MARKER))
+
+    assert rc == 0
+    entries = _log_entries(git_repo)
+    assert [e["tier"] for e in entries] == [0, 0, 1]
+    assert [e["attempt_in_tier"] for e in entries] == [0, 1, 0]
+    assert [e["ok"] for e in entries] == [False, False, True]
+
+
+def test_retry_prompt_carries_the_prior_verdict(failup, git_repo, tmp_path, monkeypatch):
+    # The stub runner ignores its argv task text, so this checks the ARGV the
+    # ladder builds for the retry attempt directly rather than the outcome.
+    monkeypatch.setenv("STUB_COUNTER_FILE", str(tmp_path / ".stub-counter"))
+    monkeypatch.setenv("STUB_PLAN", "capability,ok")
+    tiers = _tiers(git_repo, ["r0"])
+
+    seen_tasks = []
+    real_run = failup.run
+
+    def spy(cmd, cwd=None, timeout=1800):
+        if cmd[0] != "git":
+            seen_tasks.append(cmd[2])   # [python, stub_runner.py, task, "--model", ...]
+        return real_run(cmd, cwd=cwd, timeout=timeout)
+
+    monkeypatch.setattr(failup, "run", spy)
+    failup.run_ladder("do the thing", str(git_repo), str(tiers), STUB_RUNNER,
+                      gate_cmds=(NOOP_LINT, CHECK_MARKER))
+
+    assert seen_tasks[0] == "do the thing"
+    assert seen_tasks[1].startswith("do the thing\n\n[failup retry]")
+    assert "tests-failed" not in seen_tasks[1]        # the legacy string, not the detail
+    assert "the previous attempt failed" in seen_tasks[1]
 
 
 def test_stash_reset_recovery_restores_clean_tree_between_attempts(
