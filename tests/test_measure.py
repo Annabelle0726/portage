@@ -90,17 +90,55 @@ def test_runner_reported_cost_sums_by_tier(measure, tmp_path):
     assert s["cost_by_tier_usd"] == {0: 0.03, 1: 0.05}
 
 
-def test_cna_is_recall_over_cost_per_tier(measure, tmp_path):
+def test_success_per_dollar_is_recall_over_cost_per_tier(measure, tmp_path):
     project = tmp_path
     _write_log(project, [
-        # tier 0: 2 attempts, 1 passed -> recall 50%, cost 0.10 -> cna 0.5/0.10=5.0
+        # tier 0: 2 attempts, 1 passed -> recall 50%, cost 0.10 -> 0.5/0.10=5.0
         _attempt("r1", 0, "sonnet", False, "lint-failed", "capability", cost_usd=0.05),
         _attempt("r2", 0, "sonnet", True, "ok", "ok", cost_usd=0.05),
     ])
 
     s = measure.summarize(str(project), None, None)
 
-    assert s["cna_by_tier"] == {0: 5.0}
+    assert s["success_per_dollar_by_tier"] == {0: 5.0}
+
+
+def test_cna_is_solved_at_start_tier_over_solvable_at_all(measure, tmp_path):
+    # HB-0 rev 3: real Ceiling-Normalized Accuracy from the Herdr reference —
+    # (share routed to a tier that it solves) / (share solvable by ANY tier).
+    project = tmp_path
+    _write_log(project, [
+        # r1: routed to tier 0, tier 0 solves it directly.
+        _attempt("r1", 0, "m0", True, "ok", "ok"),
+        # r2: routed to tier 0, tier 0 fails, escalates, tier 1 solves it —
+        # solvable, but NOT solved by the tier it was routed to.
+        _attempt("r2", 0, "m0", False, "lint-failed", "capability"),
+        _attempt("r2", 1, "m1", True, "ok", "ok"),
+        # r3: routed to tier 0, never solved by anyone — stalled, excluded
+        # from both numerator and denominator (not "solvable at all").
+        _attempt("r3", 0, "m0", False, "lint-failed", "capability"),
+        _attempt("r3", 1, "m1", False, "lint-failed", "capability"),
+    ])
+
+    s = measure.summarize(str(project), None, None)
+
+    # tier 0 was routed to for r1/r2/r3; r3 is stalled (excluded); of the
+    # remaining 2 solvable, only r1 was solved BY tier 0 itself -> 1/2.
+    assert s["cna_by_tier"] == {0: 0.5}
+
+
+def test_cna_grouped_by_start_tier_not_every_tier_touched(measure, tmp_path):
+    # A run that starts above the floor (--start-tier) groups under ITS
+    # start tier for CNA, distinct from per_tier_recall's tier_seen grouping.
+    project = tmp_path
+    _write_log(project, [
+        _attempt("r1", 1, "m1", True, "ok", "ok"),  # started AT tier 1, solved there
+    ])
+
+    s = measure.summarize(str(project), None, None)
+
+    assert s["cna_by_tier"] == {1: 1.0}
+    assert 0 not in s["cna_by_tier"]
 
 
 def test_unpriceable_rung_counted_not_dropped(measure, tmp_path):

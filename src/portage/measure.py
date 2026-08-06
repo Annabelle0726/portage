@@ -156,25 +156,37 @@ def snapshot(args) -> None:
 # Sources: CW-04 §2.5 and P7-report's ambiguity note, both in
 # `portage-local/docs/reports/`. Mirrored in registry.schema.json's
 # `license_family` description — keep the two in sync if either changes.
-# ── HB-2 / HB-2b STATUS ──────────────────────────────────────────────────────
+# ── HB-2 / HB-2b / HB-0 rev 3 STATUS ─────────────────────────────────────────
 # `LINE-P-ROADMAP.md`'s S1 entry asks for four things from this module:
 # per-class priors, per-tier recall, three-price accounting, and "CNA." All
-# four are below. Two notes on how, not just that:
+# four are below.
 #
 # THREE-PRICE ACCOUNTING is really "price, priced two ways, plus a derived
 # third number" — list price (`tier_pricing.price_for_rung`'s registry-exact
 # path), cache-adjusted price (same function, applied automatically whenever
 # a row's confirmed cache-hit rate and the attempt's cache_read_tokens are
 # both present — see tier_pricing.py, it is not a separate code path), and
-# effective price per verified success, which `cna_by_tier` is the reciprocal
-# of rather than a fourth independent calculation.
+# effective price per verified success, which `success_per_dollar_by_tier`
+# is the reciprocal of rather than a fourth independent calculation.
 #
-# CNA'S DEFINITION IS ADOPTED, NOT CITED. The real "Herdr Build-Ready
-# Reference" document that was supposed to define it is not reachable from
-# this repo, Notion, or Google Drive (HB2b-report.md §0, §4) — checked, not
-# assumed missing. CNA here means verified-success rate ÷ $ spent per tier.
-# If the real definition ever surfaces, diff it against this before trusting
-# any dashboard or revert decision built on `cna_by_tier`.
+# CNA CORRECTED, HB-0 rev 3 (2026-08-06). HB-2b adopted "verified-success
+# rate ÷ $ spent" as a stand-in because the real source document wasn't
+# reachable from this repo, Notion, or Drive at the time — that guess is
+# preserved above as `success_per_dollar_by_tier` (still a real, useful
+# number, just not CNA) rather than deleted. The document later surfaced
+# (`portage-local/docs/reference/herdr-build-ready-reference-2026-07.md`,
+# §5 "Learning-loop implementation") and defines Ceiling-Normalized
+# Accuracy precisely: "(share of queries routed to a tier that solves them)
+# / (share solvable by ANY tier)" — a ROUTER-CALIBRATION metric (was this
+# tier's assignment correct, among tasks answerable at all?), not a cost
+# metric. `cna_by_tier` below is keyed by `start_tier` (which tier the
+# router actually chose), not `tier` seen during escalation — a query that
+# started at tier 0 and had to escalate to tier 2 counts against tier 0's
+# CNA, because tier 0 was the tier it was ROUTED to, even though the
+# capability-statistics section above (which asks "how does tier N perform
+# when reached") correctly counts that same attempt at every tier it
+# actually touched. Same log, two different groupings, because the two
+# questions are different.
 def summarize(project: str, since, until) -> dict:
     """The headline numbers, over ADMISSIBLE runs only.
 
@@ -223,18 +235,13 @@ def summarize(project: str, since, until) -> dict:
             else:
                 class_counts[failure_classes.classify(a["reason"])] += 1
 
-    # HB-2b: three-price accounting and CNA, over the same admissible,
-    # tier-reached population as per_tier_recall above — reusing tier_seen so
-    # CNA's denominator (per-tier success rate) and numerator ($ per tier) are
-    # counted over the identical set of attempts. `cost_unknown` is NOT
-    # silently dropped: every attempt tier_pricing.py can't price is counted
-    # by its `basis` string, same "no silent exclusion" rule as
-    # `inadmissible_runs` above. Adopted definition, not a cited one — see
-    # HB2b-report.md §4: the real "CNA" source document isn't reachable from
-    # this repo, Notion, or Drive, so this is CNA = verified-success rate ÷ $
-    # spent per tier, i.e. the reciprocal of effective-price-per-verified-
-    # success — same signal, inverted for readability, not independent
-    # evidence of anything the cost-per-tier number doesn't already show.
+    # HB-2b: three-price accounting, over the same admissible, tier-reached
+    # population as per_tier_recall above — reusing tier_seen so
+    # `success_per_dollar_by_tier`'s denominator (per-tier success rate) and
+    # numerator ($ per tier) are counted over the identical set of attempts.
+    # `cost_unknown` is NOT silently dropped: every attempt tier_pricing.py
+    # can't price is counted by its `basis` string, same "no silent
+    # exclusion" rule as `inadmissible_runs` above.
     price_table = _load_price_table(project)
     cost_by_tier = defaultdict(float)
     cost_unknown = defaultdict(int)
@@ -253,13 +260,37 @@ def summarize(project: str, since, until) -> dict:
             else:
                 cost_by_tier[a["tier"]] += price
 
-    per_tier_cna = {}
+    success_per_dollar = {}
     for t in tier_seen:
         recall = _pct(tier_won.get(t, 0), tier_seen[t])
         cost = cost_by_tier.get(t, 0.0)
-        per_tier_cna[t] = (
+        success_per_dollar[t] = (
             round((recall / 100) / cost, 4) if recall is not None and cost > 0 else None
         )
+
+    # HB-0 rev 3: real Ceiling-Normalized Accuracy, grouped by START tier —
+    # "which tier the router chose" — not by every tier an attempt touched.
+    # numerator: of the runs routed to tier T, how many did T solve directly
+    # (win_tier == T, no escalation needed). denominator: of that SAME
+    # population, how many were solvable at all (some tier eventually
+    # passed — not stalled). A tier that's always right when the task is
+    # answerable scores 1.0; a tier that's under-selected (the task was
+    # solvable, but not by the tier the router picked) scores low — this is
+    # the routing-collapse signal the Herdr reference names CNA for.
+    solved_at_start = defaultdict(int)
+    solvable_from_start = defaultdict(int)
+    for r in admissible:
+        st = r["start_tier"]
+        if r["stalled"]:
+            continue
+        solvable_from_start[st] += 1
+        if r["win_tier"] == st:
+            solved_at_start[st] += 1
+
+    cna_by_tier = {
+        t: round(solved_at_start.get(t, 0) / solvable_from_start[t], 4)
+        for t in solvable_from_start
+    }
 
     for r in admissible:
         if r["stalled"]:
@@ -302,7 +333,8 @@ def summarize(project: str, since, until) -> dict:
         },
         "cost_by_tier_usd": {t: round(c, 4) for t, c in sorted(cost_by_tier.items())},
         "cost_unknown_by_basis": dict(sorted(cost_unknown.items())),
-        "cna_by_tier": dict(sorted(per_tier_cna.items())),
+        "success_per_dollar_by_tier": dict(sorted(success_per_dollar.items())),
+        "cna_by_tier": dict(sorted(cna_by_tier.items())),
     }
 
 
@@ -334,8 +366,10 @@ def _fmt(label, s: dict) -> str:
         "(of attempts that reached the tier, share that passed)",
         f"  per-class failures: {s['per_class_failures']}   (HB-2 five-class priors)",
         f"  $ by tier:          {s['cost_by_tier_usd']}   (HB-2b, admissible attempts)",
+        f"  success/$ by tier:  {s['success_per_dollar_by_tier']}   "
+        "(cost-efficiency, not CNA — see measure.py's module note)",
         f"  CNA by tier:        {s['cna_by_tier']}   "
-        "(adopted def: success rate / $ — see measure.py's module note)",
+        "(routed-tier solve rate / solvable-by-any-tier rate, keyed by start_tier)",
     ]
     if s["cost_unknown_by_basis"]:
         lines.append(
