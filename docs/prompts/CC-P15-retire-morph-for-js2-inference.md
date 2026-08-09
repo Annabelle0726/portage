@@ -123,7 +123,63 @@ That repo has its own Morph rows (CC-P9, GLM-5.2/Qwen in-slot) in a personal
 deployment Greg put on hold earlier this session. This prompt is EduCloud-scoped
 — don't touch `portage-local`.
 
-## 7. Report
+## 7. If JS2 Inference doesn't fully pan out — named fallback candidates, screened for billing behavior
+
+Greg's objection to Morph is specific: **its account defaults to automatically
+reloading paid API usage credits** (auto-recharge) rather than stopping and
+asking. That's the axis to screen every fallback candidate against — not just
+price or catalog. Two real candidates, researched here so this isn't a blind
+name-drop:
+
+- **Fireworks AI** — prepaid credits; its "Auto Reload" feature is
+  **opt-in, off by default** (`docs.fireworks.ai/faq/billing-pricing-usage/billing/billing-management`).
+  Notably, Fireworks also exposes per-model precision as a **queryable API
+  fact** (`firectl model get`, `docs.fireworks.ai/models/quantization`) rather
+  than a static marketing claim — that's arguably a *stronger* fit for this
+  platform's "verify, don't trust self-report" rule than Morph's own bf16
+  claim ever was, since it can be checked per request instead of taken on
+  faith. No pre-built table exists across their catalog, so whichever model
+  is considered needs its precision queried individually before it earns a
+  registry row.
+- **Together AI** — already the T5 trigger-(b) reserve occupant, and its
+  billing turns out to match what Greg wants without any change needed:
+  fully prepaid, credits never expire, and auto-recharge is **opt-in, off by
+  default** — if the threshold trips with no auto-recharge configured, API
+  access simply suspends rather than silently billing further
+  (`docs.together.ai/docs/billing-credits`). Nothing to fix here; worth
+  stating plainly so it isn't second-guessed later.
+- **Groq — a genuine mismatch worth flagging, not assuming away.** Groq (the
+  existing T5 trigger-(a) occupant) has no prepaid-credit gate at all: it
+  bills automatically at spend thresholds ($1/$10/$100/$500/$1,000) and then
+  monthly once past $1,000 lifetime — payment is withdrawn automatically at
+  each milestone, with no "balance hit zero, now what" moment
+  (`console.groq.com/docs/billing-faqs`). That's structurally closer to what
+  Greg dislikes about Morph than either of the other two candidates is, even
+  though Groq's dormant/trigger-only role means it rarely bills at all in
+  practice. Groq does offer a **Spend Limits** feature (automated caps +
+  proactive alerts) — configuring one explicitly should be a condition of
+  Groq staying in the roster at all, not an optional nice-to-have.
+
+**Turn this into a standing rule, not a one-off finding.** The registry
+already requires `price_source`/`price_confirmed_date` before a price field
+can be non-null (HB-2b). Apply the same discipline to billing safety: no
+paid third-party `provider_route` should go live without confirming (a) any
+auto-recharge/auto-reload toggle is off, or (b) where the provider's billing
+model has no such toggle (Groq's shape), an explicit spend cap is configured
+instead — both recorded with a date, the same way price confirmation already
+is. Decide during this prompt's execution whether that belongs as a new
+schema field or an operator checklist in `docs/deploy.md`-equivalent
+documentation; either is fine, but the requirement itself should end up
+written down somewhere a future row can't skip.
+
+This section does not change Morph's status — Morph stays excluded
+regardless of what these alternatives' billing looks like. This is about
+what backs up JS2 Inference if step 1 finds a real gap (precision
+unconfirmable, model unavailable, capacity), and about tightening the
+existing T5 reserve rows while this prompt is already touching this part of
+the roster.
+
+## 8. Report
 
 - What step 1's verification actually found: access path used, real model
   catalog, precision (confirmed, or explicitly not confirmable), real
