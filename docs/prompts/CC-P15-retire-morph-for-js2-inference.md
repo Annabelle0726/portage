@@ -79,6 +79,19 @@ verifiable yet.
   community resource with no SU cost" implies some kind of fair-use ceiling
   probably exists even if undocumented.
 
+**Exact endpoints, confirmed this session** (`docs.jetstream-cloud.org/inference-service/api-examples/`):
+
+| Model | Base URL |
+|---|---|
+| `llama-4-scout` | `https://llm.jetstream-cloud.org/llama-4-scout/v1` |
+| DeepSeek R1 | `https://llm.jetstream-cloud.org/sglang/v1` |
+| `gpt-oss-120b` | `http://llm.jetstream-cloud.org/gpt-oss-120b/v1/` |
+
+Append `/models` to any of these to pull the **live** catalog for that
+backend rather than trusting this table — the docs themselves say this is
+the way to check what's actually current, which is exactly the "verify,
+don't trust the doc" move this platform already requires everywhere else.
+
 ## 2. Verify AI Verde — Greg's own institution's platform, possibly reachable today with his NetID
 
 AI Verde is a real, operating platform, not a research prototype only: the
@@ -105,9 +118,38 @@ this session:
   required" (`datascience.arizona.edu/research/tools/ai-verde`,
   `cyverse.org/ai-verde`). Given the course codes already in this repo
   (INFO-523-S26, INFO-526-SU26) are University of Arizona courses, Greg likely
-  already has a NetID and may be able to get direct access — faculty contact
-  is `mithunpaul@arizona.edu` per the current page, for an initial
-  consultation. **This is Greg's action, not something this prompt can do.**
+  already has a NetID and may be able to get direct access. **This is Greg's
+  action, not something this prompt can do.**
+- **Named contacts, per Greg:** **Tyson Swetnam** (his UNM contact for AI
+  Verde) and **Wolfgang Jentner** (University of Arizona side). Both real —
+  Jentner confirmed via LinkedIn as University of Arizona Research &
+  Partnerships. Swetnam is confirmed real (BIO5 Institute, School of Natural
+  Resources and the Environment, GitHub/ResearchGate), but **every public
+  source found this session ties him to the University of Arizona, not
+  UNM** — no source confirms a UNM affiliation. This may well be accurate
+  and just not reflected in what's publicly indexed (a recent move, a joint
+  appointment, direct correspondence Greg has that this search can't see);
+  it isn't a reason to doubt Greg, just something worth confirming when
+  actually reaching out rather than asserting either way in the docs this
+  prompt writes. The current page's listed contact is `mithunpaul@arizona.edu`
+  — worth checking whether that's still the right first email, or whether
+  Jentner/Swetnam are the better route now.
+- **AI Verde supports bringing your own API key, per Greg** — for external
+  providers, from any account, not just AI Verde-managed ones. Flagging a
+  real tension with what's publicly documented: the arXiv paper describes
+  the opposite — a **surrogate-key system**, where the institution holds
+  master keys for commercial providers (OpenAI, Anthropic) and issues
+  scoped surrogate keys to users/courses for budget control, not BYOK.
+  Both can be true at once (surrogate keys as the default managed path, BYOK
+  as an option added since the Feb 2026 paper — the model catalog has
+  already moved since then per the point above, so a feature addition
+  wouldn't be surprising). Confirm which is actually live when talking to
+  Swetnam/Jentner, and if BYOK is real, it's independently useful for this
+  platform's own registry pattern: it would mean routing through AI Verde
+  doesn't require putting a *new* institutional key in Portage's own budget
+  tracking for the proprietary rows already provisioned (OpenAI/Anthropic/
+  Perplexity) — those existing keys could potentially route through AI
+  Verde's proxy layer instead of direct, if there's ever a reason to.
 - **Model catalog**: the paper (Feb 2026) lists Llama 3.2, Mistral, Phi-3 as
   open models served, plus commercial proxying (OpenAI, Anthropic, AnvilGPT)
   via the same LiteLLM layer; the current site lists LLaMA4, Gemma, and Phi-4
