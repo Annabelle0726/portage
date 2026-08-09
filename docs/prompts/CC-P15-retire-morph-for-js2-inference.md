@@ -1,10 +1,17 @@
-# CC-P15 — Retire Morph as T4; the Jetstream2 Inference Service takes its place
+# CC-P15 — Retire Morph as T4; Jetstream2 and AI Verde take its place
 
 *Claude Code prompt. Authored in Cowork, 2026-08-09, from a direct instruction
 from Greg: don't use Morph to serve EduCloud model traffic. Priority order,
 his words: Jetstream2 inference first, self-hosted local mostly, an open
 source alternative otherwise, and a proprietary service only as a fallback
 that won't keep charging — never Morph specifically, regardless of category.
+**Updated same day**, Greg added a second named institutional option ahead of
+any commercial fallback: **AI Verde** (University of Arizona's Data Science
+Institute, arXiv:2502.09651) — "I'd rather use this than a different platform
+besides JS2 anyway." Keep JS2 in mind for now alongside an ACCESS allocation;
+AI Verde sits alongside it, not behind it. He also asked explicitly:
+**whatever Portage was gaining from Morph needs to survive this change** —
+this isn't just a find-and-replace, see §9.
 
 **Audit finding: Morph is not live yet, which is why this is cheap to fix
 now.** `config/profiles/scale2.educloud.*` — the actually-rendered EduCloud
@@ -43,9 +50,10 @@ specifically because Morph documents bf16/no-quantization serving, which is
 this platform's stated reproducibility bar for every benchmarked alias
 (CW-04 §2.2, repeated in specs 08/10/11 — "an aggregator free to change
 quantization under a stable model ID makes that cell irreproducible").
-Nothing found so far says what precision the JS2 Inference Service serves
-at. Don't port Morph's justification onto a new vendor by find-and-replace —
-verify it, or say plainly that it isn't verifiable yet.
+Nothing found so far says what precision either the JS2 Inference Service or
+AI Verde (§2 below) serves at. Don't port Morph's justification onto a new
+vendor by find-and-replace — verify it, or say plainly that it isn't
+verifiable yet.
 
 ---
 
@@ -71,29 +79,86 @@ verify it, or say plainly that it isn't verifiable yet.
   community resource with no SU cost" implies some kind of fair-use ceiling
   probably exists even if undocumented.
 
-## 2. Replace the T4 occupant, doc by doc
+## 2. Verify AI Verde — Greg's own institution's platform, possibly reachable today with his NetID
+
+AI Verde is a real, operating platform, not a research prototype only: the
+University of Arizona's Data Science Institute has run it since a May 2024
+pilot (paper: arXiv:2502.09651, "AI-VERDE: A Gateway for Egalitarian Access to
+Large Language Model-Based Resources For Educational Institutions"). Verified
+this session:
+
+- **Stack**: Kubernetes orchestration, vLLM for open-model serving, **LiteLLM
+  as the reverse proxy** exposing an OpenAI-compatible API — the same proxy
+  layer Portage's own `render_config.py` targets. Wiring this in is very
+  likely the same `openai`-shaped row the sovereign deployments already use
+  (api_base + api_key), not a new provider_route — same conclusion §5 reaches
+  for JS2 Inference, for the same reason.
+- **Access**: CILogon federated login with university credentials, individual
+  API keys, and — notably — **faculty manage class-specific user groups with
+  per-course budgets and student access lists.** That's close to prior art
+  for exactly the instructor/student budget-isolation pattern
+  `scale2.educloud.staff` vs `.student` already implements. Worth reading the
+  paper section on this before assuming EduCloud's own design has nothing to
+  learn from it.
+- **Access gate, confirmed just now, and it matters:** "Currently, AI Verde is
+  available only to the University of Arizona community and a U of A NetID is
+  required" (`datascience.arizona.edu/research/tools/ai-verde`,
+  `cyverse.org/ai-verde`). Given the course codes already in this repo
+  (INFO-523-S26, INFO-526-SU26) are University of Arizona courses, Greg likely
+  already has a NetID and may be able to get direct access — faculty contact
+  is `mithunpaul@arizona.edu` per the current page, for an initial
+  consultation. **This is Greg's action, not something this prompt can do.**
+- **Model catalog**: the paper (Feb 2026) lists Llama 3.2, Mistral, Phi-3 as
+  open models served, plus commercial proxying (OpenAI, Anthropic, AnvilGPT)
+  via the same LiteLLM layer; the current site lists LLaMA4, Gemma, and Phi-4
+  instead — **the catalog has clearly moved since the paper**, so query it
+  live rather than trusting either snapshot.
+- **Hardware partners, confirmed**: the paper names CyVerse and **NSF's
+  Jetstream2** explicitly as AI Verde's cost-effective hardware partners —
+  meaning this may already be partly JS2-backed infrastructure, reinforcing
+  rather than competing with keeping JS2 in mind.
+- **Not verified, and flagged rather than assumed:** precision/quantization is
+  undocumented on every source checked, same open question as JS2 Inference.
+  Same rule applies — confirm per model before it earns a registry row, or
+  say plainly it couldn't be confirmed.
+- **A discrepancy to flag honestly, not silently smooth over:** Greg named
+  this "UArizona / University of New Mexico." Every current source found this
+  session says UArizona-only, no UNM mention anywhere (paper, CyVerse page,
+  Data Science Institute page). This may be a newer or informal collaboration
+  not yet reflected publicly, or a separate thing entirely — worth asking
+  Greg directly rather than either asserting UNM involvement or quietly
+  dropping it from the record.
+
+**Scope note for the ladder itself**: AI Verde's UArizona-only gate means it
+can't be assumed as a universal default the way JS2 Inference (gated only by
+a free ACCESS account, not a specific institution) can — EduCloud is meant to
+be reusable by other institutions per its own stated mission. Treat AI Verde
+the way the sovereign rows already are: an institution-specific option Greg's
+own deployment can use, layered alongside the general ladder, not a
+replacement for what a non-UArizona EduCloud operator would fall back to.
+
+## 3. Replace the T4 occupant, doc by doc
 
 Update `docs/PLATFORM.md`, `docs/specs/02`, `08`, `10`, `11`, and
-`REVISION-PLAN.md` to name the JS2 Inference Service (and whichever specific
-model clears step 1 — gpt-oss-120b and/or DeepSeek R1 are the likely
-candidates given the roster's existing code/reasoning aliases) as the T4
+`REVISION-PLAN.md` to name whichever of JS2 Inference / AI Verde clears
+verification (both are worth carrying if both check out — they're
+complementary institutional options, not competitors) as the T4
 `remote_open_broad` occupant, in place of Morph/MiniMax M3. Keep T3
 (DeepSeek first-party) untouched — its justification (automatic prefix
-caching economics) has nothing to do with this change. Where step 1 couldn't
-confirm precision, write that honestly in the spec rather than asserting
-parity with what Morph offered.
+caching economics) has nothing to do with this change. Where verification
+couldn't confirm precision, write that honestly in the spec rather than
+asserting parity with what Morph offered.
 
-## 3. Re-examine the T5 dormant reserve now that this exists
+## 4. Re-examine the T5 dormant reserve now that this exists
 
 T5's trigger-(a) occupant is Groq's gpt-oss-120b, justified as "a
-latency-sensitive alias no local rung can serve." If the JS2 Inference
-Service already serves gpt-oss-120b for free at acceptable latency (step 1's
-numbers), that trigger may be redundant — Groq would no longer be the only
-place to get it. **Don't retire it on assumption.** Decide with the real
-latency numbers from step 1, and write down what they were and why the
-decision went the way it did.
+latency-sensitive alias no local rung can serve." If JS2 Inference or AI
+Verde already serves an equivalent model for free at acceptable latency,
+that trigger may be redundant — Groq would no longer be the only place to
+get it. **Don't retire it on assumption.** Decide with real latency numbers,
+and write down what they were and why the decision went the way it did.
 
-## 4. Schema and code
+## 5. Schema and code
 
 - `schema/registry.schema.json`: update the `provider_route` enum and its
   description (~lines 36-39, ~118) — drop `morph` from anything describing
@@ -109,21 +174,21 @@ decision went the way it did.
 - `tier_pricing.py` and `tests/test_render_config.py`: update the Morph
   fixtures (~lines 326, 329) to match whatever the new T4 row actually is.
 
-## 5. Budgets
+## 6. Budgets
 
 The `$5/30d` Morph budget line (specs/11's pricing table) either disappears
-entirely (if the JS2 Inference Service genuinely costs nothing, confirmed in
-step 1) or gets replaced with whatever cap makes sense for a free
-community-shared service — likely none needed today, but note this
-platform's existing budget-guard pattern in case JS2 meters it later.
+entirely (if the occupant genuinely costs nothing, confirmed above) or gets
+replaced with whatever cap makes sense for a free community/institutional
+service — likely none needed today, but note this platform's existing
+budget-guard pattern in case either service meters usage later.
 
-## 6. Leave `portage-local` alone
+## 7. Leave `portage-local` alone
 
 That repo has its own Morph rows (CC-P9, GLM-5.2/Qwen in-slot) in a personal
 deployment Greg put on hold earlier this session. This prompt is EduCloud-scoped
 — don't touch `portage-local`.
 
-## 7. If JS2 Inference doesn't fully pan out — named fallback candidates, screened for billing behavior
+## 8. If neither institutional option fully pans out — named fallback candidates, screened for billing behavior
 
 Greg's objection to Morph is specific: **its account defaults to automatically
 reloading paid API usage credits** (auto-recharge) rather than stopping and
@@ -174,18 +239,61 @@ written down somewhere a future row can't skip.
 
 This section does not change Morph's status — Morph stays excluded
 regardless of what these alternatives' billing looks like. This is about
-what backs up JS2 Inference if step 1 finds a real gap (precision
+what backs up JS2/AI Verde if verification finds a real gap (precision
 unconfirmable, model unavailable, capacity), and about tightening the
 existing T5 reserve rows while this prompt is already touching this part of
 the roster.
 
-## 8. Report
+## 9. What Portage was actually gaining from Morph — keep the substance, not the vendor
 
-- What step 1's verification actually found: access path used, real model
-  catalog, precision (confirmed, or explicitly not confirmable), real
-  latency/throughput numbers.
+Greg was explicit: this is not a find-and-replace. Three distinct things Morph
+was providing, assessed one at a time so nothing gets silently dropped:
+
+- **Precision transparency as a reproducibility guarantee.** This is the one
+  that matters most and it's already handled: §1 and §2 both require
+  confirming serving precision on the replacement(s) before they inherit
+  Morph's old justification. Don't consider this section done until that's
+  actually resolved one way or the other for whichever occupant lands.
+- **The specific model family (MiniMax M3 primary; GLM-5.2, Qwen available
+  in-slot on the same key, no new account).** This one does **not** carry
+  over automatically — JS2 Inference's catalog (DeepSeek R1, Llama 4 Scout,
+  gpt-oss-120b) and AI Verde's (Llama/Mistral/Phi per the paper; Llama4/Gemma/
+  Phi-4 per the current site) contain neither MiniMax M3 nor GLM-5.2 nor
+  Qwen. Don't paper over this: if nothing in the current roster actually
+  depends on MiniMax M3 specifically (check whether any alias's benchmark
+  results are pinned to it, or whether it was chosen simply because it was
+  *available* on Morph's key), losing access to that exact model family is
+  an acceptable trade for what's gained. If something does depend on it,
+  the sovereignty-consistent way to get it back is self-hosting the
+  checkpoint (locally, or on more Jetstream2 GPU allocation), not a new
+  commercial aggregator relationship.
+- **One key, low administrative friction, models available without a new
+  account or inclusion review.** JS2 Inference and AI Verde both replicate
+  this in spirit — one endpoint, no per-model account — for whatever they
+  actually host. Note plainly in the spec that adding a model neither
+  service hosts still means a fresh inclusion review, same as it always did
+  for anything outside whatever key is already provisioned.
+- **Existing platform discipline already covers the rest.** `REVISION-PLAN.md`
+  states "Parity Bench still benchmarks per endpoint, not per model name,
+  before an endpoint earns production traffic" — that gate already applies
+  here without this prompt needing to invent anything new. Run it against
+  whichever occupant(s) land before they carry real traffic, exactly as any
+  other new endpoint would require.
+
+Report which of these three actually transferred cleanly, which didn't, and
+why — this is the section Greg will check first.
+
+## 10. Report
+
+- What verification actually found for JS2 Inference and AI Verde: access
+  path(s) used, real model catalogs, precision (confirmed, or explicitly not
+  confirmable, for each), real latency/throughput numbers.
+- Whether Greg's UNM claim about AI Verde was ever resolved (asked him
+  directly, found a source, or left genuinely open).
 - Every doc/schema/code file changed and how.
-- The T5/Groq redundancy decision from §3, and the evidence behind it.
+- The T5/Groq redundancy decision from §4, and the evidence behind it.
+- The §9 accounting — precision, model family, admin friction, Parity Bench —
+  point by point.
 - Test suite green (`pytest` or whatever the repo's actual command is).
 - Anything that needed a real GPU/model call this environment couldn't make,
   flagged explicitly rather than silently assumed to be fine.
