@@ -120,20 +120,22 @@ this session:
   (INFO-523-S26, INFO-526-SU26) are University of Arizona courses, Greg likely
   already has a NetID and may be able to get direct access. **This is Greg's
   action, not something this prompt can do.**
-- **Named contacts, per Greg:** **Tyson Swetnam** (his UNM contact for AI
-  Verde) and **Wolfgang Jentner** (University of Arizona side). Both real —
-  Jentner confirmed via LinkedIn as University of Arizona Research &
-  Partnerships. Swetnam is confirmed real (BIO5 Institute, School of Natural
-  Resources and the Environment, GitHub/ResearchGate), but **every public
-  source found this session ties him to the University of Arizona, not
-  UNM** — no source confirms a UNM affiliation. This may well be accurate
-  and just not reflected in what's publicly indexed (a recent move, a joint
-  appointment, direct correspondence Greg has that this search can't see);
-  it isn't a reason to doubt Greg, just something worth confirming when
-  actually reaching out rather than asserting either way in the docs this
-  prompt writes. The current page's listed contact is `mithunpaul@arizona.edu`
-  — worth checking whether that's still the right first email, or whether
-  Jentner/Swetnam are the better route now.
+- **Named contacts, per Greg, both confirmed:** **Tyson Swetnam** and
+  **Wolfgang Jentner**. Jentner: University of Arizona Research &
+  Partnerships (LinkedIn). Swetnam: primary appointments at the University
+  of Arizona (BIO5 Institute, School of Natural Resources and the
+  Environment) **plus an affiliated-faculty appointment in UNM's Department
+  of Computer Science** (`cs.unm.edu/directory/faculty-profiles/tyson-swetnam.html`,
+  corroborated via UNM CS's own affiliated-faculty directory) — this is the
+  real UArizona/UNM bridge Greg described, resolved: not two separate
+  AI Verde deployments, but a person with a foot in both institutions. The
+  public AI Verde pages still say a UArizona NetID is required for direct
+  platform access, so this doesn't necessarily mean UNM users get their own
+  login — but Swetnam is exactly the right person to ask about that,
+  including whether UNM affiliation itself is a path in. The current page's
+  listed contact is `mithunpaul@arizona.edu` — worth checking whether that's
+  still the right first email, or whether Jentner/Swetnam are the better
+  route now.
 - **AI Verde supports bringing your own API key, per Greg** — for external
   providers, from any account, not just AI Verde-managed ones. Flagging a
   real tension with what's publicly documented: the arXiv paper describes
@@ -163,15 +165,8 @@ this session:
   undocumented on every source checked, same open question as JS2 Inference.
   Same rule applies — confirm per model before it earns a registry row, or
   say plainly it couldn't be confirmed.
-- **A discrepancy to flag honestly, not silently smooth over:** Greg named
-  this "UArizona / University of New Mexico." Every current source found this
-  session says UArizona-only, no UNM mention anywhere (paper, CyVerse page,
-  Data Science Institute page). This may be a newer or informal collaboration
-  not yet reflected publicly, or a separate thing entirely — worth asking
-  Greg directly rather than either asserting UNM involvement or quietly
-  dropping it from the record.
-
-**Scope note for the ladder itself**: AI Verde's UArizona-only gate means it
+**Scope note for the ladder itself**: AI Verde's UArizona-only platform gate
+(confirmed above, independent of Swetnam's cross-appointment) means it
 can't be assumed as a universal default the way JS2 Inference (gated only by
 a free ACCESS account, not a specific institution) can — EduCloud is meant to
 be reusable by other institutions per its own stated mission. Treat AI Verde
