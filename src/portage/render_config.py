@@ -55,7 +55,6 @@ ALIASES = (
     "code_large",
     "research_synthesis",
     "embedding",
-    "proprietary_code",
     "proprietary_research",
 )
 
@@ -92,7 +91,7 @@ def validate_cross_entry(models: list[dict]) -> list[str]:
         alias = m.get("alias")
         if alias not in ALIASES:
             problems.append(
-                f"models[{i}]: alias {alias!r} is not one of the seven fixed aliases"
+                f"models[{i}]: alias {alias!r} is not one of the six fixed aliases"
             )
         by_alias.setdefault(alias, []).append(m)
 
@@ -156,13 +155,13 @@ def render_price_table(models: list[dict]) -> dict:
 
 def render_model_list(models: list[dict]) -> dict:
     """Registry entries -> a LiteLLM `model_list`. Every entry renders,
-    enabled or not — Gate 2 requires /v1/models to list exactly the seven
+    enabled or not — Gate 2 requires /v1/models to list exactly the six
     aliases, so a disabled alias still needs to be visible there. `enabled`
     is carried into model_info instead: HB-2's rescue path flips that flag
     (and provisions the real secret) rather than adding config, and it's
     also downstream tooling's (failup.py/herdr-meters) signal not to select
     a disabled deployment. Exclusion-from-registration was tried first and
-    was wrong: it silently dropped two of the seven aliases from /v1/models,
+    was wrong: it silently dropped two of the six aliases from /v1/models,
     which is exactly what Gate 2 checks for."""
     model_list = []
     for m in models:
